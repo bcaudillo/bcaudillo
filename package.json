@@ -1,0 +1,12 @@
+{
+  "name": "fivetran-sales-buddy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Seed script for the Fivetran Sales Buddy Supabase knowledge base",
+  "scripts": {
+    "seed": "node seed-database.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
