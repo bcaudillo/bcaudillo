@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="popup">
+
+      <!-- HEADER -->
+      <div class="header">
+        <div class="ft-logo">
+          <svg width="110" height="28" viewBox="0 0 440 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="42" width="44" height="12" rx="1.5" transform="rotate(-45 8 42)" fill="#306BEA"/>
+            <rect x="24" y="42" width="56" height="12" rx="1.5" transform="rotate(-45 24 42)" fill="#306BEA"/>
+            <rect x="40" y="42" width="56" height="12" rx="1.5" transform="rotate(-45 40 42)" fill="#306BEA"/>
+            <rect x="56" y="72" width="40" height="12" rx="1.5" transform="rotate(-45 56 72)" fill="#306BEA"/>
+            <text x="120" y="70" font-family="'DM Sans', Arial, sans-serif" font-weight="700" font-size="54" fill="white" letter-spacing="-1">fivetran</text>
+          </svg>
+        </div>
+        <div style="margin-left:auto; position:relative; z-index:1;">
+          <div class="badge">Connector Scout</div>
+        </div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <button class="active" onclick="switchTab('scan', this)">📡 Scan</button>
+        <button onclick="switchTab('search', this)">🔍 Search</button>
+        <button onclick="switchTab('troubleshoot', this)">🔧 Troubleshoot</button>
+        <button onclick="switchTab('glossary', this)">📚 Glossary</button>
+      </div>
+
+      <div class="content">
+        <div id="scan" class="section active">
+          <button class="scan-button" onclick="scanDashboard()">⚡ Scan Fivetran Dashboard</button>
+          <div id="scan-results">
+            <div class="empty-state">
+              <div class="icon">📡</div>
+              <p>Scan a Fivetran dashboard to detect<br/>active connectors and tables</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="search" class="section">
+          <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search connectors (e.g., HubSpot, Salesforce)..." />
+          </div>
+          <div id="search-results" style="padding-top: 4px;">
+            <div class="empty-state">
+              <div class="icon">🔍</div>
+              <p>Type a connector name to search</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="troubleshoot" class="section">
+          <div class="troubleshoot-tabs">
+            <button class="troubleshoot-tab active" onclick="switchTroubleshootTab('errors', this)">Error Codes</button>
+            <button class="troubleshoot-tab" onclick="switchTroubleshootTab('known-issues', this)">Known Issues</button>
+          </div>
+          <div id="errors-tab" style="display: block;">
+            <div class="error-code-grid" id="error-codes"></div>
+            <div class="search-bar" style="padding: 0 0 10px 0;">
+              <input type="text" id="troubleshoot-input" placeholder="Search errors (e.g., 403, timeout)..." />
+            </div>
+            <div id="troubleshoot-results"></div>
+          </div>
+          <div id="known-issues-tab" style="display: none;">
+            <div class="search-bar" style="padding: 0 0 10px 0;">
+              <input type="text" id="known-issue-input" placeholder="Search by connector name..." />
+            </div>
+            <div id="known-issue-filter"></div>
+            <div id="known-issue-results"></div>
+          </div>
+        </div>
+
+        <div id="glossary" class="section">
+          <div class="search-bar">
+            <input type="text" id="glossary-input" placeholder="Search glossary (e.g., MAR, CDC, Schema Drift)..." />
+          </div>
+          <div id="glossary-results" style="padding-top: 4px;">
+            <div class="empty-state">
+              <div class="icon">📚</div>
+              <p>Type a term to search the glossary</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="details" class="details"></div>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
