@@ -25,15 +25,15 @@
 
       <!-- TOOLBAR -->
       <div class="toolbar">
-        <button class="active" onclick="switchTab('scan', this)">📡 Scan</button>
-        <button onclick="switchTab('search', this)">🔍 Search</button>
-        <button onclick="switchTab('troubleshoot', this)">🔧 Troubleshoot</button>
-        <button onclick="switchTab('glossary', this)">📚 Glossary</button>
+        <button class="active" data-action="switchTab" data-tab="scan">📡 Scan</button>
+        <button data-action="switchTab" data-tab="search">🔍 Search</button>
+        <button data-action="switchTab" data-tab="troubleshoot">🔧 Troubleshoot</button>
+        <button data-action="switchTab" data-tab="glossary">📚 Glossary</button>
       </div>
 
       <div class="content">
         <div id="scan" class="section active">
-          <button class="scan-button" onclick="scanDashboard()">⚡ Scan Fivetran Dashboard</button>
+          <button class="scan-button" data-action="scanDashboard">⚡ Scan Fivetran Dashboard</button>
           <div id="scan-results">
             <div class="empty-state">
               <div class="icon">📡</div>
@@ -56,8 +56,8 @@
 
         <div id="troubleshoot" class="section">
           <div class="troubleshoot-tabs">
-            <button class="troubleshoot-tab active" onclick="switchTroubleshootTab('errors', this)">Error Codes</button>
-            <button class="troubleshoot-tab" onclick="switchTroubleshootTab('known-issues', this)">Known Issues</button>
+            <button class="troubleshoot-tab active" data-action="switchTroubleshootTab" data-ts-tab="errors">Error Codes</button>
+            <button class="troubleshoot-tab" data-action="switchTroubleshootTab" data-ts-tab="known-issues">Known Issues</button>
           </div>
           <div id="errors-tab" style="display: block;">
             <div class="error-code-grid" id="error-codes"></div>
@@ -71,6 +71,7 @@
               <input type="text" id="known-issue-input" placeholder="Search by connector name..." />
             </div>
             <div id="known-issue-filter"></div>
+            <div id="known-issue-connector-picker"></div>
             <div id="known-issue-results"></div>
           </div>
         </div>

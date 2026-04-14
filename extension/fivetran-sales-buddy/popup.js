@@ -343,7 +343,7 @@ function handleScanResults(response) {
       r.innerHTML += matchedConnections.map(conn => {
         const c = connectorData[conn.key];
         const statusColor = conn.status === 'Active' ? '#22c55e' : conn.status === 'Paused' ? '#f59e0b' : conn.status === 'Delayed' ? '#ef4444' : '#9ca3af';
-        return `<div class="detected-item" onclick="showConnectorDetails('${conn.key}')">
+        return `<div class="detected-item" data-action="showConnectorDetails" data-key="${conn.key}">
           <div class="detected-name">
             <div class="connector-icon ${c.iconClass}">${c.icon}</div>
             ${c.name}
@@ -351,7 +351,7 @@ function handleScanResults(response) {
           </div>
           <div style="font-size:11px;color:var(--ft-text-light);margin-bottom:6px;">${conn.connectionName} → ${conn.destination}</div>
           <div class="detected-tables">
-            ${c.tables.slice(0, 3).map((t, i) => `<div class="table-row"><span>• ${t.name}</span><a class="learn-more" onclick="event.stopPropagation(); showTableDetails('${conn.key}', ${i})">Learn more →</a></div>`).join('')}
+            ${c.tables.slice(0, 3).map((t, i) => `<div class="table-row"><span>• ${t.name}</span><a class="learn-more" data-action="showTableDetails" data-key="${conn.key}" data-idx="${i}" data-stop="1">Learn more →</a></div>`).join('')}
             ${c.tables.length > 3 ? `<div class="table-row" style="color:var(--ft-blue);font-weight:600;font-size:11px;margin-top:4px;">+ ${c.tables.length - 3} more tables · ${c.knownIssues.length} known issues</div>` : ''}
           </div>
         </div>`;
@@ -396,7 +396,7 @@ function handleScanResults(response) {
         }
       }
 
-      r.innerHTML += `<div class="detected-item" style="margin-top:12px;" onclick="showConnectorDetails('${key}')">
+      r.innerHTML += `<div class="detected-item" style="margin-top:12px;" data-action="showConnectorDetails" data-key="${key}">
         <div class="detected-name"><div class="connector-icon ${c.iconClass}">${c.icon}</div>View ${c.name} details & known issues →</div>
       </div>`;
     }
@@ -411,7 +411,7 @@ function handleScanResults(response) {
 // ─── ERROR CODES ──────────────────────────────────────
 function loadErrorCodes() {
   document.getElementById('error-codes').innerHTML = troubleshootingData.map((item, idx) => `
-    <div class="error-code-item" onclick="showTroubleshootingDetails(${idx})">
+    <div class="error-code-item" data-action="showTroubleshootingDetails" data-idx="${idx}">
       <div class="error-code-number">${item.errorCode}</div>
       <div class="error-code-label">${item.title.split('–')[1]?.trim() || item.title}</div>
     </div>
@@ -437,7 +437,7 @@ function loadKnownIssuesTab() {
   pickerDiv.innerHTML = `<div class="connector-picker">
     ${connectorsToShow.map(key => {
       const c = connectorData[key];
-      return `<button class="connector-pick-btn" onclick="selectConnectorIssues('${key}', this)">
+      return `<button class="connector-pick-btn" data-action="selectConnectorIssues" data-key="${key}">
         <div class="connector-icon ${c.iconClass}">${c.icon}</div>
         <span class="connector-pick-name">${c.name}</span>
         <span class="connector-pick-count">${c.knownIssues.length} issues</span>
@@ -473,7 +473,7 @@ function selectConnectorIssues(connectorKey, btn) {
     html += `<div class="category-header"><div class="category-dot ${getCatDot(cat)}"></div>${cat}</div>`;
     grouped[cat].forEach(issue => {
       const globalIdx = connector.knownIssues.indexOf(issue);
-      html += `<div class="known-issue-item ${getCatCSS(cat)}" onclick="showKnownIssueDetails('${connectorKey}', ${globalIdx})">
+      html += `<div class="known-issue-item ${getCatCSS(cat)}" data-action="showKnownIssueDetails" data-key="${connectorKey}" data-idx="${globalIdx}">
         <div class="issue-title">${issue.title}</div>
         <div class="issue-preview">${issue.preview}</div>
       </div>`;
@@ -492,7 +492,7 @@ document.getElementById('search-input')?.addEventListener('input', (e) => {
   if (!q) { r.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>Type a connector name to search</p></div>'; return; }
   const m = Object.entries(connectorData).filter(([k, c]) => k.includes(q) || c.name.toLowerCase().includes(q));
   r.innerHTML = m.length === 0 ? '<p style="color:var(--ft-text-light);font-size:13px;padding:12px 0;">No connectors found</p>'
-    : m.map(([k, c]) => `<div class="connector-card" onclick="showConnectorDetails('${k}')">
+    : m.map(([k, c]) => `<div class="connector-card" data-action="showConnectorDetails" data-key="${k}">
         <div class="connector-name" style="display:flex;align-items:center;gap:6px;">
           <div class="connector-icon ${c.iconClass}" style="width:20px;height:20px;font-size:11px;">${c.icon}</div>${c.name}
         </div>
@@ -506,7 +506,7 @@ document.getElementById('troubleshoot-input')?.addEventListener('input', (e) => 
   if (!q) { r.innerHTML = ''; return; }
   const m = troubleshootingData.filter(i => i.errorCode.includes(q) || i.title.toLowerCase().includes(q) || i.preview.toLowerCase().includes(q));
   r.innerHTML = m.length === 0 ? '<p style="color:var(--ft-text-light);font-size:13px;">No matching errors</p>'
-    : m.map(item => { const idx = troubleshootingData.indexOf(item); return `<div class="troubleshooting-item" onclick="showTroubleshootingDetails(${idx})"><div class="troubleshooting-title">${item.title}</div><div class="troubleshooting-preview">${item.preview}</div><div class="error-badge">${item.errorCode}</div></div>`; }).join('');
+    : m.map(item => { const idx = troubleshootingData.indexOf(item); return `<div class="troubleshooting-item" data-action="showTroubleshootingDetails" data-idx="${idx}"><div class="troubleshooting-title">${item.title}</div><div class="troubleshooting-preview">${item.preview}</div><div class="error-badge">${item.errorCode}</div></div>`; }).join('');
 });
 
 document.getElementById('glossary-input')?.addEventListener('input', (e) => {
@@ -515,14 +515,14 @@ document.getElementById('glossary-input')?.addEventListener('input', (e) => {
   if (!q) { r.innerHTML = '<div class="empty-state"><div class="icon">📚</div><p>Type a term to search the glossary</p></div>'; return; }
   const m = glossaryData.filter(i => i.term.toLowerCase().includes(q) || i.simple.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
   r.innerHTML = m.length === 0 ? '<p style="color:var(--ft-text-light);font-size:13px;">No terms found</p>'
-    : m.map(item => { const idx = glossaryData.indexOf(item); return `<div class="glossary-item" onclick="showGlossaryDetails(${idx})"><div class="glossary-term">${item.term}</div><div class="glossary-simple">${item.simple}</div><div class="glossary-category">${item.category}</div></div>`; }).join('');
+    : m.map(item => { const idx = glossaryData.indexOf(item); return `<div class="glossary-item" data-action="showGlossaryDetails" data-idx="${idx}"><div class="glossary-term">${item.term}</div><div class="glossary-simple">${item.simple}</div><div class="glossary-category">${item.category}</div></div>`; }).join('');
 });
 
 // ─── DETAIL VIEWS ──────────────────────────────────────
 function showConnectorDetails(key) {
   const c = connectorData[key]; const d = document.getElementById('details');
   d.innerHTML = `
-    <div class="close" onclick="closeDetails()">← Back</div>
+    <div class="close" data-action="closeDetails">← Back</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <div class="connector-icon ${c.iconClass}" style="width:32px;height:32px;font-size:16px;">${c.icon}</div>
       <div class="detail-title" style="margin-bottom:0;">${c.name}</div>
@@ -530,11 +530,11 @@ function showConnectorDetails(key) {
     <div class="detail-section"><div class="detail-label">What it does</div><div class="detail-text">${c.whatItDoes}</div></div>
     <div class="detail-section"><div class="detail-label">Useful for</div><div class="detail-text">${c.usefulFor}</div></div>
     <div class="detail-section"><div class="detail-label">Tables (${c.tables.length})</div>
-      ${c.tables.map((t, i) => `<div class="table-detail-row"><div class="table-name-link"><span>${t.name}</span><a class="learn-more" onclick="showTableDetails('${key}', ${i})">Details →</a></div></div>`).join('')}
+      ${c.tables.map((t, i) => `<div class="table-detail-row"><div class="table-name-link"><span>${t.name}</span><a class="learn-more" data-action="showTableDetails" data-key="${key}" data-idx="${i}">Details →</a></div></div>`).join('')}
     </div>
     <div class="detail-section"><div class="detail-label">Known Issues (${c.knownIssues.length})</div>
-      ${c.knownIssues.slice(0, 3).map((issue, i) => `<div class="known-issue-item ${getCatCSS(issue.category)}" style="margin-top:6px;" onclick="showKnownIssueDetails('${key}', ${i})"><div class="issue-title">${issue.title}</div><div class="issue-preview">${issue.preview}</div></div>`).join('')}
-      ${c.knownIssues.length > 3 ? `<div style="text-align:center;margin-top:8px;"><a class="learn-more" onclick="switchTab('troubleshoot', document.querySelectorAll('.toolbar button')[2]); setTimeout(() => switchTroubleshootTab('known-issues', document.querySelectorAll('.troubleshoot-tab')[1]), 50);">View all ${c.knownIssues.length} issues →</a></div>` : ''}
+      ${c.knownIssues.slice(0, 3).map((issue, i) => `<div class="known-issue-item ${getCatCSS(issue.category)}" style="margin-top:6px;" data-action="showKnownIssueDetails" data-key="${key}" data-idx="${i}"><div class="issue-title">${issue.title}</div><div class="issue-preview">${issue.preview}</div></div>`).join('')}
+      ${c.knownIssues.length > 3 ? `<div style="text-align:center;margin-top:8px;"><a class="learn-more" data-action="viewAllIssues">View all ${c.knownIssues.length} issues →</a></div>` : ''}
     </div>
     ${c.docsUrl ? `<div class="detail-section" style="margin-top:4px;"><a href="${c.docsUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ft-blue);text-decoration:none;padding:10px 14px;background:var(--ft-blue-light);border-radius:8px;border:1.5px solid var(--ft-border);width:100%;justify-content:center;">📄 View full Fivetran docs →</a></div>` : ''}`;
   d.classList.add('active');
@@ -543,7 +543,7 @@ function showConnectorDetails(key) {
 function showTableDetails(key, idx) {
   const c = connectorData[key]; const t = c.tables[idx]; const d = document.getElementById('details');
   d.innerHTML = `
-    <div class="close" onclick="showConnectorDetails('${key}')">← Back to ${c.name}</div>
+    <div class="close" data-action="showConnectorDetails" data-key="${key}">← Back to ${c.name}</div>
     <div class="detail-title">${c.name} → ${t.name}</div>
     <div class="detail-section"><div class="detail-label">What it contains</div><div class="detail-text">${t.whatContains}</div></div>
     <div class="detail-section"><div class="detail-label">Why it matters</div><div class="detail-text">${t.whyMatters}</div></div>
@@ -555,7 +555,7 @@ function showKnownIssueDetails(key, idx) {
   const c = connectorData[key]; const issue = c.knownIssues[idx]; const d = document.getElementById('details');
   const cat = issue.category || 'General';
   let html = `
-    <div class="close" onclick="closeDetails()">← Back</div>
+    <div class="close" data-action="closeDetails">← Back</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
       <div class="connector-icon ${c.iconClass}" style="width:20px;height:20px;font-size:10px;">${c.icon}</div>
       <span style="font-size:12px;color:var(--ft-text-mid);">${c.name}</span>
@@ -585,7 +585,7 @@ function showTroubleshootingDetails(idx) {
   };
   const rc = rootCauseColors[item.rootCause] || { bg: '#F3F4F6', color: '#374151', label: item.rootCause };
   d.innerHTML = `
-    <div class="close" onclick="closeDetails()">← Back</div>
+    <div class="close" data-action="closeDetails">← Back</div>
     <div class="detail-title">${item.errorCode} — ${item.title}</div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <div class="error-badge">${item.errorCode}</div>
@@ -602,7 +602,7 @@ function showTroubleshootingDetails(idx) {
 function showGlossaryDetails(idx) {
   const item = glossaryData[idx]; const d = document.getElementById('details');
   d.innerHTML = `
-    <div class="close" onclick="closeDetails()">← Back</div>
+    <div class="close" data-action="closeDetails">← Back</div>
     <div class="detail-title">${item.term}</div>
     <div class="glossary-category" style="margin-bottom:14px;">${item.category}</div>
     <div class="detail-section"><div class="detail-label">Simple Definition</div><div class="detail-text">${item.simple}</div></div>
@@ -613,5 +613,64 @@ function showGlossaryDetails(idx) {
 }
 
 function closeDetails() { document.getElementById('details').classList.remove('active'); }
+
+// ─── EVENT DELEGATION ──────────────────────────────────────
+// MV3 CSP blocks inline onclick handlers. Every interactive element uses
+// data-action (+ optional data-* payload) and is dispatched here.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  if (el.dataset.stop === '1') e.stopPropagation();
+
+  const action = el.dataset.action;
+  const key = el.dataset.key;
+  const idx = el.dataset.idx !== undefined ? parseInt(el.dataset.idx, 10) : undefined;
+
+  switch (action) {
+    case 'switchTab':
+      switchTab(el.dataset.tab, el);
+      break;
+    case 'switchTroubleshootTab':
+      switchTroubleshootTab(el.dataset.tsTab, el);
+      break;
+    case 'scanDashboard':
+      scanDashboard();
+      break;
+    case 'showConnectorDetails':
+      showConnectorDetails(key);
+      break;
+    case 'showTableDetails':
+      showTableDetails(key, idx);
+      break;
+    case 'selectConnectorIssues':
+      selectConnectorIssues(key, el);
+      break;
+    case 'showKnownIssueDetails':
+      showKnownIssueDetails(key, idx);
+      break;
+    case 'showTroubleshootingDetails':
+      showTroubleshootingDetails(idx);
+      break;
+    case 'showGlossaryDetails':
+      showGlossaryDetails(idx);
+      break;
+    case 'closeDetails':
+      closeDetails();
+      break;
+    case 'viewAllIssues':
+      switchTab('troubleshoot', document.querySelectorAll('.toolbar button')[2]);
+      setTimeout(() => switchTroubleshootTab('known-issues', document.querySelectorAll('.troubleshoot-tab')[1]), 50);
+      break;
+  }
+});
+
+// Known-issue search input (filters the connector picker)
+document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.connector-pick-btn').forEach(btn => {
+    const name = btn.querySelector('.connector-pick-name')?.textContent.toLowerCase() || '';
+    btn.style.display = name.includes(q) ? '' : 'none';
+  });
+});
 
 loadErrorCodes();
