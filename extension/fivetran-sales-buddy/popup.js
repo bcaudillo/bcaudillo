@@ -1,6 +1,9 @@
 let scannedConnectors = [];
 
 // ─── CONNECTOR DATA ──────────────────────────────────────
+// Hardcoded fallback. On popup open, supabase-client.js fetches the real data
+// and replaces the contents of this object via Object.assign. If the fetch
+// fails (network blocked, Supabase down), the hardcoded data still works.
 const connectorData = {
   hubspot: {
     name: 'HubSpot',
@@ -674,3 +677,29 @@ document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
 });
 
 loadErrorCodes();
+
+// ─── BOOTSTRAP FROM SUPABASE ──────────────────────────────────────
+// Replace the hardcoded connectorData with the real data from Supabase.
+// On failure, the hardcoded fallback (HubSpot/Salesforce/Stripe) stays in place.
+(async () => {
+  if (typeof loadConnectorDataFromSupabase !== 'function') return;
+  try {
+    const fresh = await loadConnectorDataFromSupabase();
+    if (!fresh || Object.keys(fresh).length === 0) {
+      console.warn('Supabase returned no connectors — keeping hardcoded fallback.');
+      return;
+    }
+    // Wipe hardcoded entries, splice in Supabase results.
+    for (const k of Object.keys(connectorData)) delete connectorData[k];
+    Object.assign(connectorData, fresh);
+    console.log(`Loaded ${Object.keys(connectorData).length} connectors from Supabase.`);
+
+    // If the Known Issues tab is currently open, refresh its picker so the
+    // newly-loaded connectors show up immediately.
+    if (document.getElementById('known-issues-tab').style.display === 'block') {
+      loadKnownIssuesTab();
+    }
+  } catch (err) {
+    console.warn('Supabase load failed — using hardcoded fallback:', err);
+  }
+})();

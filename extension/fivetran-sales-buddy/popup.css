@@ -98,6 +98,17 @@
     .icon-hubspot { background: #ff7a59; }
     .icon-salesforce { background: #00a1e0; }
     .icon-stripe { background: #635bff; }
+    .icon-shopify { background: #95BF47; }
+    .icon-google { background: #4285F4; }
+    .icon-facebook { background: #1877F2; }
+    .icon-aws { background: #FF9900; }
+    .icon-postgres { background: #336791; }
+    .icon-microsoft { background: #00A4EF; }
+    .icon-mysql { background: #00758F; }
+    .icon-oracle { background: #C74634; }
+    .icon-mongo { background: #47A248; }
+    .icon-azure { background: #0078D4; }
+    .icon-default { background: var(--ft-text-light); }
     .detected-tables { font-size: 12px; color: var(--ft-text-mid); }
     .table-row { margin-top: 5px; display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
     .learn-more { color: var(--ft-blue); cursor: pointer; font-weight: 600; font-size: 11px; text-decoration: none; }
