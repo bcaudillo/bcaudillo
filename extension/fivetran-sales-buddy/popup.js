@@ -309,70 +309,106 @@ function scanDashboard() {
   }
 }
 
+// Maps a scanned source-type string (e.g. "Google Analytics", "Amazon S3",
+// "MongoDB") to the canonical connector id we use in Supabase / connectorData
+// (e.g. "google_analytics", "s3", "mongo"). Returns null if no match.
+function mapSourceTypeToKey(sourceType) {
+  if (!sourceType) return null;
+  const norm = String(sourceType).toLowerCase().trim();
+  const underscored = norm.replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  if (!underscored) return null;
+
+  if (connectorData[underscored]) return underscored;
+
+  const stripped = underscored.replace(/^(amazon|google|microsoft|azure)_/, '');
+  if (connectorData[stripped]) return stripped;
+
+  // Explicit aliases for display-names that diverge from connector ids.
+  const aliases = {
+    mongodb: 'mongo',
+    amazon_s3: 's3',
+    amazon_dynamodb: 'dynamodb',
+    amazon_aurora_mysql: 'aurora',
+    aurora_mysql: 'aurora',
+    amazon_aurora_postgresql: 'aurora_postgres',
+    aurora_postgresql: 'aurora_postgres',
+    azure_sql_database: 'azure_sql_db',
+    azure_sql: 'azure_sql_db',
+    postgresql: 'postgres_rds',
+    postgres: 'postgres_rds',
+    sqlserver: 'sql_server',
+    ga4: 'google_analytics',
+    google_analytics_4: 'google_analytics'
+  };
+  if (aliases[underscored]) return aliases[underscored];
+  if (aliases[stripped]) return aliases[stripped];
+
+  // Last-resort: match by display name on any loaded connector.
+  for (const [id, data] of Object.entries(connectorData)) {
+    const dataName = (data.name || '').toLowerCase().replace(/\s+/g, '_');
+    if (dataName === underscored || dataName === stripped) return id;
+  }
+  return null;
+}
+
 function handleScanResults(response) {
   const r = document.getElementById('scan-results');
 
   if (response.page === 'connections-list' && response.connections?.length > 0) {
-    // Match scanned connectors to our knowledge base
+    // Match scanned connectors to our knowledge base. Dedupe by resolved
+    // connector id so the same source type across multiple connections only
+    // renders one card.
     scannedConnectors = [];
-    const matchedConnections = [];
-    const unmatchedConnections = [];
+    const matchedByKey = new Map();
+    const unmatchedSet = new Map();
 
     response.connections.forEach(conn => {
-      const key = conn.sourceType.toLowerCase().replace(/\s+/g, '');
-      if (connectorData[key]) {
-        scannedConnectors.push(key);
-        matchedConnections.push({ ...conn, key });
+      const key = mapSourceTypeToKey(conn.sourceType);
+      if (key && connectorData[key]) {
+        if (!matchedByKey.has(key)) {
+          scannedConnectors.push(key);
+          matchedByKey.set(key, conn);
+        }
       } else {
-        unmatchedConnections.push(conn);
+        const label = conn.sourceType || conn.connectionName || 'Unknown';
+        if (!unmatchedSet.has(label)) unmatchedSet.set(label, conn);
       }
     });
 
-    const activeCount = response.connections.filter(c => c.status === 'Active').length;
-    const pausedCount = response.connections.filter(c => c.status === 'Paused').length;
-    const delayedCount = response.connections.filter(c => c.status === 'Delayed').length;
+    const matchedConnections = Array.from(matchedByKey.entries()).map(([key, conn]) => ({ ...conn, key }));
+    const unmatchedConnections = Array.from(unmatchedSet.values());
 
-    let statusLine = `<strong>${response.connections.length} connectors</strong>`;
-    const statuses = [];
-    if (activeCount) statuses.push(`${activeCount} active`);
-    if (pausedCount) statuses.push(`${pausedCount} paused`);
-    if (delayedCount) statuses.push(`${delayedCount} delayed`);
-    if (statuses.length) statusLine += ` · ${statuses.join(', ')}`;
+    const totalUnique = matchedConnections.length + unmatchedConnections.length;
+    r.innerHTML = `<div class="scan-status"><div class="check">✓</div><span>Found <strong>${totalUnique} connector${totalUnique === 1 ? '' : 's'}</strong></span></div>`;
 
-    r.innerHTML = `<div class="scan-status"><div class="check">✓</div><span>Found ${statusLine}</span></div>`;
-
-    // Show matched connectors (ones we have knowledge for)
+    // Matched: we have a Supabase knowledge-base entry for this source type.
     if (matchedConnections.length > 0) {
       r.innerHTML += matchedConnections.map(conn => {
         const c = connectorData[conn.key];
-        const statusColor = conn.status === 'Active' ? '#22c55e' : conn.status === 'Paused' ? '#f59e0b' : conn.status === 'Delayed' ? '#ef4444' : '#9ca3af';
+        const issueCount = (c.knownIssues || []).length;
+        const issueBadge = issueCount
+          ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 8px;border-radius:4px;">${issueCount} known issue${issueCount === 1 ? '' : 's'}</span>`
+          : '';
         return `<div class="detected-item" data-action="showConnectorDetails" data-key="${conn.key}">
           <div class="detected-name">
             <div class="connector-icon ${c.iconClass}">${c.icon}</div>
             ${c.name}
-            <span style="margin-left:auto;font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}15;padding:2px 8px;border-radius:4px;">${conn.status}</span>
-          </div>
-          <div style="font-size:11px;color:var(--ft-text-light);margin-bottom:6px;">${conn.connectionName} → ${conn.destination}</div>
-          <div class="detected-tables">
-            ${c.tables.slice(0, 3).map((t, i) => `<div class="table-row"><span>• ${t.name}</span><a class="learn-more" data-action="showTableDetails" data-key="${conn.key}" data-idx="${i}" data-stop="1">Learn more →</a></div>`).join('')}
-            ${c.tables.length > 3 ? `<div class="table-row" style="color:var(--ft-blue);font-weight:600;font-size:11px;margin-top:4px;">+ ${c.tables.length - 3} more tables · ${c.knownIssues.length} known issues</div>` : ''}
+            ${issueBadge}
           </div>
         </div>`;
       }).join('');
     }
 
-    // Show unmatched connectors (detected but no knowledge base entry)
+    // Unmatched: source type detected but no knowledge-base entry yet.
     if (unmatchedConnections.length > 0) {
-      r.innerHTML += `<div class="category-header" style="margin-top:14px;">Other connectors detected</div>`;
+      r.innerHTML += `<div class="category-header" style="margin-top:14px;">No knowledge base entry yet</div>`;
       r.innerHTML += unmatchedConnections.map(conn => {
-        const statusColor = conn.status === 'Active' ? '#22c55e' : conn.status === 'Paused' ? '#f59e0b' : '#9ca3af';
-        return `<div class="detected-item" style="opacity:0.7;cursor:default;">
+        const label = conn.sourceType || conn.connectionName || 'Unknown';
+        return `<div class="detected-item" style="opacity:0.65;cursor:default;">
           <div class="detected-name">
             <div class="connector-icon" style="background:var(--ft-text-light);">?</div>
-            ${conn.sourceType}
-            <span style="margin-left:auto;font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}15;padding:2px 8px;border-radius:4px;">${conn.status}</span>
+            ${label}
           </div>
-          <div style="font-size:11px;color:var(--ft-text-light);">${conn.connectionName} → ${conn.destination}</div>
         </div>`;
       }).join('');
     }
