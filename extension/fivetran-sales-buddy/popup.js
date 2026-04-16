@@ -379,20 +379,25 @@ function handleScanResults(response) {
     const unmatchedConnections = Array.from(unmatchedSet.values());
 
     const totalUnique = matchedConnections.length + unmatchedConnections.length;
-    r.innerHTML = `<div class="scan-status"><div class="check">✓</div><span>Found <strong>${totalUnique} connector${totalUnique === 1 ? '' : 's'}</strong></span></div>`;
+    const totalConns = response.totalConnections || totalUnique;
+    r.innerHTML = `<div class="scan-status"><div class="check">✓</div><span>Found <strong>${totalUnique} connector type${totalUnique === 1 ? '' : 's'}</strong>${totalConns > totalUnique ? ` across ${totalConns} connections` : ''}</span></div>`;
 
     // Matched: we have a Supabase knowledge-base entry for this source type.
     if (matchedConnections.length > 0) {
       r.innerHTML += matchedConnections.map(conn => {
         const c = connectorData[conn.key];
         const issueCount = (c.knownIssues || []).length;
+        const instanceCount = conn.instanceCount || 1;
+        const countBadge = instanceCount > 1
+          ? `<span style="font-size:10px;color:var(--ft-text-light);margin-left:4px;">×${instanceCount}</span>`
+          : '';
         const issueBadge = issueCount
           ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 8px;border-radius:4px;">${issueCount} known issue${issueCount === 1 ? '' : 's'}</span>`
           : '';
         return `<div class="detected-item" data-action="showConnectorDetails" data-key="${conn.key}">
           <div class="detected-name">
             <div class="connector-icon ${c.iconClass}">${c.icon}</div>
-            ${c.name}
+            ${c.name}${countBadge}
             ${issueBadge}
           </div>
         </div>`;
@@ -404,10 +409,14 @@ function handleScanResults(response) {
       r.innerHTML += `<div class="category-header" style="margin-top:14px;">No knowledge base entry yet</div>`;
       r.innerHTML += unmatchedConnections.map(conn => {
         const label = conn.sourceType || conn.connectionName || 'Unknown';
+        const instanceCount = conn.instanceCount || 1;
+        const countBadge = instanceCount > 1
+          ? `<span style="font-size:10px;color:var(--ft-text-light);margin-left:4px;">×${instanceCount}</span>`
+          : '';
         return `<div class="detected-item" style="opacity:0.65;cursor:default;">
           <div class="detected-name">
             <div class="connector-icon" style="background:var(--ft-text-light);">?</div>
-            ${label}
+            ${label}${countBadge}
           </div>
         </div>`;
       }).join('');

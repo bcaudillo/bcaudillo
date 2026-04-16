@@ -41,96 +41,34 @@
   }
 
   // ─── CONNECTIONS LIST SCANNER ──────────────────────────────
-  // Anchors on the actual connection detail links in the DOM
-  // (/dashboard/connections/<connection_id>/...) rather than trying to parse
-  // the obfuscated table structure. Each unique connection_id in the URL is
-  // treated as one real row. For each, we identify the source type by
-  // scanning the row's text against a list of known connector display names.
+  // Scans all source-type spans on the page (span.ndnOq), deduplicates by
+  // connector name, and returns one entry per unique connector type. This
+  // means 5 Google Sheets connections → 1 "Google Sheets" card.
   function scanConnectionsList() {
     const connections = [];
-    const seen = new Set();
+    const typeCounts = new Map();
 
-    // Sorted longest-first so "Google Analytics" wins over "Google".
-    const KNOWN_CONNECTOR_NAMES = [
-      'Amazon Aurora MySQL', 'Amazon Aurora PostgreSQL', 'Amazon DynamoDB', 'Amazon S3',
-      'Azure SQL Database', 'Azure Blob Storage', 'Google Cloud Storage',
-      'Google Analytics', 'Google Sheets', 'Google Drive', 'Google Ads',
-      'Facebook Pages', 'Facebook Ads', 'LinkedIn Ads', 'Pinterest Ads',
-      'TikTok Ads', 'Snapchat Ads', 'Twitter Ads', 'Amazon Ads', 'Bing Ads',
-      'Microsoft Dynamics 365', 'Dynamics 365', 'Yahoo Gemini',
-      'SQL Server', 'Heroku Postgres', 'Aurora MySQL', 'Aurora PostgreSQL',
-      'Postgres RDS', 'MySQL RDS', 'MariaDB', 'PostgreSQL', 'Postgres', 'MongoDB', 'DynamoDB',
-      'The Trade Desk', 'Adobe Analytics', 'Customer.io', 'ActiveCampaign',
-      'HubSpot', 'Salesforce', 'Pardot', 'Marketo', 'Mailchimp', 'Klaviyo',
-      'Stripe', 'Braintree', 'PayPal', 'Shopify', 'Zendesk', 'Freshdesk', 'Intercom',
-      'Slack', 'GitHub', 'GitLab', 'Bitbucket', 'Jira', 'Asana', 'Trello',
-      'Airtable', 'Monday', 'Notion', 'Pipedrive', 'Outreach', 'SalesLoft', 'Gong',
-      'Apollo', 'ZoomInfo', 'Clearbit', 'FullStory', 'Heap', 'Amplitude', 'Mixpanel',
-      'Segment', 'Twilio', 'SendGrid', 'Zuora', 'Chargebee', 'Workday', 'ServiceNow',
-      'NetSuite', 'QuickBooks', 'Xero', 'Braze', 'PagerDuty',
-      'Snowflake', 'BigQuery', 'Redshift', 'Databricks',
-      'Oracle', 'MySQL', 'GitHub', 'Facebook', 'Google', 'Stripe'
-    ];
-    const SORTED_KNOWN = [...new Set(KNOWN_CONNECTOR_NAMES)].sort((a, b) => b.length - a.length);
+    // Primary: grab every source-type span Fivetran renders.
+    const sourceTypeSpans = document.querySelectorAll('span.ndnOq');
+    for (const span of sourceTypeSpans) {
+      const t = (span.textContent || '').trim();
+      if (!t) continue;
+      typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+    }
 
-    // Every real connection row has a link into /dashboard/connections/<id>/...
-    // Header cells do not, so this anchor naturally skips them.
-    const links = document.querySelectorAll('a[href*="/dashboard/connections/"]');
-
-    for (const link of links) {
-      const href = link.getAttribute('href') || '';
-      const m = href.match(/\/dashboard\/connections\/([^/?#]+)/);
-      if (!m) continue;
-
-      const connectionId = m[1];
-      if (!connectionId || connectionId === 'new' || connectionId === 'create') continue;
-      if (seen.has(connectionId)) continue;
-      seen.add(connectionId);
-
-      const connectionName = link.textContent.trim();
-
-      // Walk up to the row container: the nearest ancestor that *contains the
-      // source-type span*. We stop at either the span.ndnOq ancestor (Fivetran
-      // UI class that holds source-type text) or ~8 parents deep.
-      let row = link;
-      for (let i = 0; i < 8; i++) {
-        const next = row.parentElement;
-        if (!next) break;
-        row = next;
-        if (row.querySelector && row.querySelector('span.ndnOq')) break;
-      }
-
-      // Primary: grab source type from the known Fivetran source-type span.
-      // Fall back to known-name text matching if the class has changed.
-      let sourceType = '';
-      const stEl = row.querySelector ? row.querySelector('span.ndnOq') : null;
-      if (stEl) sourceType = (stEl.textContent || '').trim();
-
-      const rowText = (row.textContent || '').trim();
-      if (!sourceType) {
-        for (const name of SORTED_KNOWN) {
-          const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const re = new RegExp(`\\b${escaped}\\b`, 'i');
-          if (re.test(rowText)) { sourceType = name; break; }
-        }
-      }
-
-      // Status
-      let status = '';
-      for (const kw of ['Broken', 'Paused', 'Delayed', 'Syncing', 'Active']) {
-        if (rowText.includes(kw)) { status = kw; break; }
-      }
-
+    // Build one entry per unique source type.
+    for (const [sourceType, count] of typeCounts) {
       connections.push({
-        connectionName,
-        sourceType: sourceType || connectionName.replace(/^raw_/, ''),
+        connectionName: '',
+        sourceType,
         destination: '',
-        status: status || 'Unknown'
+        status: 'Detected',
+        instanceCount: count
       });
     }
 
-    // If the link-based scan found nothing (very different DOM, single-page
-    // app still rendering, etc.) fall back to the whole-page text matcher.
+    // Fallback: if span.ndnOq class changed or doesn't exist, scan page
+    // text for known connector names.
     if (connections.length === 0) {
       return scanByTextMatching();
     }
@@ -138,6 +76,7 @@
     return {
       page: 'connections-list',
       count: connections.length,
+      totalConnections: Array.from(typeCounts.values()).reduce((a, b) => a + b, 0),
       connections
     };
   }
