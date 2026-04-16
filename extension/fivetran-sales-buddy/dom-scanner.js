@@ -41,109 +41,93 @@
   }
 
   // ─── CONNECTIONS LIST SCANNER ──────────────────────────────
-  // Scans the main connections/connectors list page
+  // Anchors on the actual connection detail links in the DOM
+  // (/dashboard/connections/<connection_id>/...) rather than trying to parse
+  // the obfuscated table structure. Each unique connection_id in the URL is
+  // treated as one real row. For each, we identify the source type by
+  // scanning the row's text against a list of known connector display names.
   function scanConnectionsList() {
     const connections = [];
+    const seen = new Set();
 
-    // Strategy 1: Find rows by looking for "Source type" header, then walking sibling rows
-    // Since classes are obfuscated, we scan by content patterns
+    // Sorted longest-first so "Google Analytics" wins over "Google".
+    const KNOWN_CONNECTOR_NAMES = [
+      'Amazon Aurora MySQL', 'Amazon Aurora PostgreSQL', 'Amazon DynamoDB', 'Amazon S3',
+      'Azure SQL Database', 'Azure Blob Storage', 'Google Cloud Storage',
+      'Google Analytics', 'Google Sheets', 'Google Drive', 'Google Ads',
+      'Facebook Pages', 'Facebook Ads', 'LinkedIn Ads', 'Pinterest Ads',
+      'TikTok Ads', 'Snapchat Ads', 'Twitter Ads', 'Amazon Ads', 'Bing Ads',
+      'Microsoft Dynamics 365', 'Dynamics 365', 'Yahoo Gemini',
+      'SQL Server', 'Heroku Postgres', 'Aurora MySQL', 'Aurora PostgreSQL',
+      'Postgres RDS', 'MySQL RDS', 'MariaDB', 'PostgreSQL', 'Postgres', 'MongoDB', 'DynamoDB',
+      'The Trade Desk', 'Adobe Analytics', 'Customer.io', 'ActiveCampaign',
+      'HubSpot', 'Salesforce', 'Pardot', 'Marketo', 'Mailchimp', 'Klaviyo',
+      'Stripe', 'Braintree', 'PayPal', 'Shopify', 'Zendesk', 'Freshdesk', 'Intercom',
+      'Slack', 'GitHub', 'GitLab', 'Bitbucket', 'Jira', 'Asana', 'Trello',
+      'Airtable', 'Monday', 'Notion', 'Pipedrive', 'Outreach', 'SalesLoft', 'Gong',
+      'Apollo', 'ZoomInfo', 'Clearbit', 'FullStory', 'Heap', 'Amplitude', 'Mixpanel',
+      'Segment', 'Twilio', 'SendGrid', 'Zuora', 'Chargebee', 'Workday', 'ServiceNow',
+      'NetSuite', 'QuickBooks', 'Xero', 'Braze', 'PagerDuty',
+      'Snowflake', 'BigQuery', 'Redshift', 'Databricks',
+      'Oracle', 'MySQL', 'GitHub', 'Facebook', 'Google', 'Stripe'
+    ];
+    const SORTED_KNOWN = [...new Set(KNOWN_CONNECTOR_NAMES)].sort((a, b) => b.length - a.length);
 
-    // Look for all text nodes that match known connector names
-    // The source type column contains the canonical connector name
-    const allText = document.body.innerText;
+    // Every real connection row has a link into /dashboard/connections/<id>/...
+    // Header cells do not, so this anchor naturally skips them.
+    const links = document.querySelectorAll('a[href*="/dashboard/connections/"]');
 
-    // Find the table-like structure by looking for the header row
-    // Headers: "Connection name", "Source type", "Destination", "Status"
-    const allElements = document.querySelectorAll('div, span, td, tr, a');
+    for (const link of links) {
+      const href = link.getAttribute('href') || '';
+      const m = href.match(/\/dashboard\/connections\/([^/?#]+)/);
+      if (!m) continue;
 
-    // Strategy: Find elements that contain "Source type" header
-    let sourceTypeHeader = null;
-    for (const el of allElements) {
-      if (el.textContent.trim() === 'Source type' && el.offsetParent !== null) {
-        sourceTypeHeader = el;
-        break;
+      const connectionId = m[1];
+      if (!connectionId || connectionId === 'new' || connectionId === 'create') continue;
+      if (seen.has(connectionId)) continue;
+      seen.add(connectionId);
+
+      const connectionName = link.textContent.trim();
+
+      // Walk up to the row container: the nearest ancestor whose text contains
+      // enough context to include the source-type and status cells.
+      let row = link;
+      for (let i = 0; i < 6; i++) {
+        const next = row.parentElement;
+        if (!next) break;
+        row = next;
+        const txt = row.textContent || '';
+        if (txt.length > 40) break;
       }
-    }
+      const rowText = (row.textContent || '').trim();
 
-    if (!sourceTypeHeader) {
-      // Fallback: scan entire page for known connector name patterns
-      return scanByTextMatching();
-    }
-
-    // Find the table container (walk up from header to find the repeating row structure)
-    const tableContainer = findTableContainer(sourceTypeHeader);
-    if (!tableContainer) {
-      return scanByTextMatching();
-    }
-
-    // Get all rows — they're divs with consistent structure
-    // Each row contains: chevron, checkbox, connection name (link), source type (icon + text), destination, status
-    const rows = tableContainer.querySelectorAll(':scope > div');
-
-    for (const row of rows) {
-      // Skip header row
-      if (row.textContent.includes('Connection name') && row.textContent.includes('Source type')) continue;
-
-      const text = row.textContent.trim();
-      if (!text) continue;
-
-      // Extract connection name — it's usually a link (anchor) with the raw_ prefix
-      const links = row.querySelectorAll('a');
-      let connectionName = '';
-      for (const link of links) {
-        const linkText = link.textContent.trim();
-        if (linkText.startsWith('raw_') || linkText.includes('_')) {
-          connectionName = linkText;
-          break;
-        }
-      }
-
-      // Extract source type — find span elements with short, capitalized connector names
+      // Source type: first known connector name that appears in the row text
+      // (longest-first ordering prevents "Google" shadowing "Google Analytics").
       let sourceType = '';
-      const spans = row.querySelectorAll('span');
-      for (const span of spans) {
-        const spanText = span.textContent.trim();
-        // Source type names are typically 1-3 words, capitalized, no underscores
-        if (spanText && !spanText.includes('_') && !spanText.includes('warehouse') &&
-            spanText.length > 1 && spanText.length < 30 &&
-            spanText !== 'Active' && spanText !== 'Paused' && spanText !== 'Delayed' &&
-            spanText !== 'Broken' && spanText !== 'Re-sync' &&
-            /^[A-Z]/.test(spanText)) {
-          sourceType = spanText;
-          break;
-        }
+      for (const name of SORTED_KNOWN) {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (re.test(rowText)) { sourceType = name; break; }
       }
 
-      // Extract status
+      // Status
       let status = '';
-      const statusKeywords = ['Active', 'Paused', 'Delayed', 'Broken', 'Syncing'];
-      for (const keyword of statusKeywords) {
-        if (text.includes(keyword)) {
-          status = keyword;
-          break;
-        }
+      for (const kw of ['Broken', 'Paused', 'Delayed', 'Syncing', 'Active']) {
+        if (rowText.includes(kw)) { status = kw; break; }
       }
 
-      // Extract destination
-      let destination = '';
-      for (const span of spans) {
-        const spanText = span.textContent.trim();
-        if (spanText.includes('warehouse') || spanText.includes('bigquery') ||
-            spanText.includes('snowflake') || spanText.includes('redshift') ||
-            spanText.includes('databricks') || spanText.includes('terraform')) {
-          destination = spanText;
-          break;
-        }
-      }
+      connections.push({
+        connectionName,
+        sourceType: sourceType || connectionName.replace(/^raw_/, ''),
+        destination: '',
+        status: status || 'Unknown'
+      });
+    }
 
-      if (sourceType || connectionName) {
-        connections.push({
-          connectionName: connectionName || '',
-          sourceType: sourceType || connectionName.replace('raw_', ''),
-          destination: destination || '',
-          status: status || 'Unknown'
-        });
-      }
+    // If the link-based scan found nothing (very different DOM, single-page
+    // app still rendering, etc.) fall back to the whole-page text matcher.
+    if (connections.length === 0) {
+      return scanByTextMatching();
     }
 
     return {
