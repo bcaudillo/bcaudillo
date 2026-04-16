@@ -9,6 +9,8 @@
 (function() {
   'use strict';
 
+  console.log('[fivetran-scout] content script loaded on', window.location.href);
+
   // ─── PAGE DETECTION ──────────────────────────────────────
   function detectPage() {
     const url = window.location.href;
