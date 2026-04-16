@@ -115,6 +115,7 @@ const knownIssues = [
     issue_title: 'Change Tracking Not Supported on AlwaysOn Availability Groups',
     issue_preview: 'CT method fails on AlwaysOn-backed Azure SQL',
     root_cause: 'Azure SQL Database with AlwaysOn Availability Groups does not support the Change Tracking incremental sync method. The underlying CT mechanism is incompatible with the failover replication model.',
+    impact: 'Connector setup fails validation on AlwaysOn-backed Azure SQL. Customers expecting the lightweight CT method must switch to CDC (heavier source load) or Teleport Sync (slower cadence) before they can onboard, which can delay go-live.',
     resolution: 'Use Change Data Capture, Binary Log Reader, or Fivetran Teleport Sync instead. Ensure the database is in Full Recovery mode and has a full backup on the primary node before enabling CDC.'
   },
   {
@@ -122,6 +123,7 @@ const knownIssues = [
     issue_title: 'Expired SAS Token Breaks the Connection String',
     issue_preview: 'Sync fails when the Azure SAS token expires',
     root_cause: 'If you use SAS-token-based authentication, the token has a fixed expiry. Once it expires, Azure rejects the connection and Fivetran cannot sync.',
+    impact: 'The connector stops syncing at the moment of token expiry, usually silently until an operator notices stale data in the warehouse. Every re-auth requires a human to regenerate the token and manually update the connection string in the Fivetran UI.',
     resolution: 'Renew the SAS token before expiry and update the connection string in the Fivetran connector settings. Consider Managed Identity or Service Principal auth to avoid token-renewal overhead.'
   },
   // mariadb
@@ -130,6 +132,7 @@ const knownIssues = [
     issue_title: 'ON DELETE / ON UPDATE CASCADE Changes Not Replicated',
     issue_preview: 'Cascading deletes and updates are lost in the destination',
     root_cause: 'A known connector bug: changes triggered by ON DELETE CASCADE or ON UPDATE CASCADE constraints do not emit the binlog events Fivetran expects, so they are not replicated.',
+    impact: 'The destination drifts from source whenever cascading constraints fire. Orphaned parent rows or stale child rows accumulate in the warehouse, silently breaking referential integrity for downstream dbt models and joins.',
     resolution: 'Avoid relying on cascade constraints for data that must reach the destination. Handle cascading logic in application code with explicit DELETE/UPDATE statements, or perform periodic full re-syncs on affected tables.'
   },
   {
@@ -137,6 +140,7 @@ const knownIssues = [
     issue_title: 'MariaDB 11.4+ Requires binlog_legacy_event_pos=ON',
     issue_preview: 'Connector fails to parse binlog events on MariaDB 11.4+',
     root_cause: 'MariaDB 11.4 changed the default binlog event position format. Fivetran requires the legacy format to correctly parse events.',
+    impact: 'Fresh MariaDB 11.4+ sources fail immediately on the first binlog read. The connector never produces a successful sync until the legacy flag is set and the MariaDB server is restarted, which can require a disruptive maintenance window for production instances.',
     resolution: 'Set binlog_legacy_event_pos=ON in the MariaDB configuration file and restart the server. Required for all MariaDB 11.4 and later instances.'
   },
   // aurora
@@ -145,6 +149,7 @@ const knownIssues = [
     issue_title: 'Intermittent Connection Loss on Aurora MySQL <1.22.5',
     issue_preview: 'Older Aurora MySQL versions drop the binlog connection randomly',
     root_cause: 'A known Aurora MySQL bug in versions prior to 1.22.5 causes intermittent connection loss that disrupts Fivetran\'s binlog streaming.',
+    impact: 'The connector appears unreliable — random disconnections cause sync delays, false alerts, and repeated "connector stuck" support tickets. The only true fix is an Aurora cluster upgrade, which many customers defer, leaving the pipeline flaky in the meantime.',
     resolution: 'Upgrade the Aurora MySQL cluster to 1.22.5 or later. Ensure the upgrade is applied during a maintenance window as it requires a cluster reboot.'
   },
   // aurora_postgres
@@ -153,6 +158,7 @@ const knownIssues = [
     issue_title: 'Logical Replication Requires Aurora PG 10+ on the Primary Node',
     issue_preview: 'Cannot enable logical replication on Aurora PG <10 or on a read replica',
     root_cause: 'Aurora PostgreSQL only supports logical replication (pgoutput plugin) on version 10 or later, and only from the primary node. Read replicas cannot host the replication slot.',
+    impact: 'Customers on Aurora PG 9.x or who default to the reader endpoint cannot use the preferred CDC method. They either upgrade (cluster reboot required) or fall back to Query-Based sync, which scales poorly on large tables and puts more read load on the primary.',
     resolution: 'Upgrade to Aurora PostgreSQL 10+ and connect Fivetran to the cluster writer endpoint (primary). Enable rds.logical_replication in the parameter group and reboot. If upgrading is not possible, fall back to Query-Based sync or Teleport Sync.'
   },
   {
@@ -160,6 +166,7 @@ const knownIssues = [
     issue_title: 'ALTER TABLE ADD COLUMN SET DEFAULT Not Captured',
     issue_preview: 'Existing rows do not get the new default value in the destination',
     root_cause: 'When you add a column with a default value, logical replication does not emit UPDATE events for the existing rows — only the schema change is captured. Existing-row values remain NULL in the destination.',
+    impact: 'After adding a defaulted column, existing rows appear as NULL in the destination. Dashboards and downstream models that rely on the new column show blank or miscounted data for the historical backfill window until a manual re-sync is triggered.',
     resolution: 'Trigger a full table re-sync after the ALTER TABLE to populate the new column for existing rows. For large tables, schedule the re-sync during a low-activity window.'
   },
   // heroku_postgres
@@ -168,6 +175,7 @@ const knownIssues = [
     issue_title: 'No Logical Replication Support on Heroku Postgres',
     issue_preview: 'WAL-based CDC is not available — must use Query-Based sync',
     root_cause: 'Heroku Postgres does not expose the logical replication features that pgoutput requires. Heroku customers have no way to enable it.',
+    impact: 'Customers on Heroku cannot get true CDC — delete tracking without a primary key is impossible, and Query-Based polling puts steady read load on the primary database. For high-write OLTP apps, freshness and source performance both suffer noticeably vs. WAL-based CDC.',
     resolution: 'Use Query-Based incremental sync (xmin polling) instead. Accept the trade-off: slightly higher source load and no delete tracking without a primary key. If WAL-based CDC is critical, migrate to RDS PostgreSQL or Aurora PostgreSQL. You can also request logical replication support from Heroku.'
   }
 ];
