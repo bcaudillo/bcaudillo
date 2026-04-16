@@ -89,25 +89,30 @@
 
       const connectionName = link.textContent.trim();
 
-      // Walk up to the row container: the nearest ancestor whose text contains
-      // enough context to include the source-type and status cells.
+      // Walk up to the row container: the nearest ancestor that *contains the
+      // source-type span*. We stop at either the span.ndnOq ancestor (Fivetran
+      // UI class that holds source-type text) or ~8 parents deep.
       let row = link;
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 8; i++) {
         const next = row.parentElement;
         if (!next) break;
         row = next;
-        const txt = row.textContent || '';
-        if (txt.length > 40) break;
+        if (row.querySelector && row.querySelector('span.ndnOq')) break;
       }
-      const rowText = (row.textContent || '').trim();
 
-      // Source type: first known connector name that appears in the row text
-      // (longest-first ordering prevents "Google" shadowing "Google Analytics").
+      // Primary: grab source type from the known Fivetran source-type span.
+      // Fall back to known-name text matching if the class has changed.
       let sourceType = '';
-      for (const name of SORTED_KNOWN) {
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const re = new RegExp(`\\b${escaped}\\b`, 'i');
-        if (re.test(rowText)) { sourceType = name; break; }
+      const stEl = row.querySelector ? row.querySelector('span.ndnOq') : null;
+      if (stEl) sourceType = (stEl.textContent || '').trim();
+
+      const rowText = (row.textContent || '').trim();
+      if (!sourceType) {
+        for (const name of SORTED_KNOWN) {
+          const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp(`\\b${escaped}\\b`, 'i');
+          if (re.test(rowText)) { sourceType = name; break; }
+        }
       }
 
       // Status
