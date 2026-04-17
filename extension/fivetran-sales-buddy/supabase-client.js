@@ -44,7 +44,10 @@ const connectorMeta = {
   jira:             { icon: 'J', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/jira' },
   snowflake_db:     { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/databases/snowflake' },
   bigquery_db:      { icon: 'B', iconClass: 'icon-google',            docsUrl: 'https://fivetran.com/docs/connectors/databases/bigquery' },
-  redshift_db:      { icon: 'R', iconClass: 'icon-aws',               docsUrl: 'https://fivetran.com/docs/connectors/databases/redshift' }
+  redshift_db:      { icon: 'R', iconClass: 'icon-aws',               docsUrl: 'https://fivetran.com/docs/connectors/databases/redshift' },
+  marketo:          { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/marketo' },
+  amplitude:        { icon: 'A', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/amplitude' },
+  mixpanel:         { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/mixpanel' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
