@@ -124,6 +124,7 @@ const knownIssues = [
     issue_title: 'Binlog Must Be Row-Based With ≥1 Day Retention',
     issue_preview: 'Incremental sync fails if binlog_format is not ROW or retention is too short',
     root_cause: 'Fivetran requires binlog_format=ROW to capture full row images for CDC. MySQL also requires the binary log to retain at least 1 day of changes so Fivetran can resume after brief outages.',
+    impact: 'Initial connection fails at Fivetran validation, or — worse — passes validation but silently drops events after the first sync pause longer than the retention window. Destination rows diverge from source with no loud error in the dashboard, and the gap is usually only discovered during a downstream data audit.',
     resolution: 'In the RDS parameter group, set binlog_format=ROW and binlog retention hours ≥ 24. Restart the instance if required. For replicas, set slave_parallel_type=LOGICAL_CLOCK to keep events sequential.'
   },
   {
@@ -131,6 +132,7 @@ const knownIssues = [
     issue_title: 'Unsupported DML Commands Cause Replication Gaps',
     issue_preview: 'Non-standard updates or deletes do not replicate',
     root_cause: 'If a DDL/DML command does not emit a standard binlog ROW event (e.g. certain ALTER TABLE operations, non-transactional DML), Fivetran cannot capture the change and destination rows diverge from source.',
+    impact: 'Destination rows drift from source without any error in the Fivetran dashboard. Downstream reports, joins, and aggregates become subtly wrong and are typically only caught when analysts spot-check a value against the source system.',
     resolution: 'Avoid non-transactional or schema-destructive commands on synced tables. Use standard INSERT/UPDATE/DELETE. If a gap is suspected, trigger a historical re-sync of the affected table.'
   },
   // mysql
@@ -139,6 +141,7 @@ const knownIssues = [
     issue_title: 'Schema Changes May Trigger Automatic Re-Sync',
     issue_preview: 'Some column changes cause Fivetran to re-sync the whole table',
     root_cause: 'When Fivetran cannot cleanly migrate a destination schema to match a new source column layout (e.g. incompatible type changes, renames), it falls back to a full re-sync of the affected table.',
+    impact: 'An unannounced re-sync on a large OLTP table can spike MAR for the month, saturate source IOPS during business hours, and delay downstream dashboards until the re-sync completes. Customers on tight MAR budgets can hit overages without warning.',
     resolution: 'Coordinate schema changes with the Fivetran team. For large tables, avoid mid-sync column type changes. Monitor the Fivetran dashboard for re-sync warnings and plan MAR impact accordingly.'
   },
   // oracle
@@ -147,6 +150,7 @@ const knownIssues = [
     issue_title: 'LogMiner Sync Method Is Sunset',
     issue_preview: 'LogMiner connections stop syncing after May 15, 2026',
     root_cause: 'Oracle LogMiner has operational limitations (30-character name limit, heavy CPU cost on the source) and Fivetran has sunsetted it. Support ends April 15, 2026; syncs stop May 15, 2026.',
+    impact: 'On the cutover date, LogMiner-based Oracle connections stop syncing entirely. Reports and pipelines built on that Oracle data go stale the next day with no automatic fallback — customers must migrate to Binary Log Reader or Teleport Sync, or they lose the pipeline.',
     resolution: 'Migrate existing LogMiner connections to Binary Log Reader (recommended) or Fivetran Teleport Sync before April 15, 2026. New Oracle connections cannot select LogMiner.'
   },
   {
@@ -154,6 +158,7 @@ const knownIssues = [
     issue_title: 'LogMiner Cannot Sync Tables or Columns With Names >30 Characters',
     issue_preview: 'Tables with long names are silently skipped on LogMiner',
     root_cause: 'Oracle LogMiner does not support object names longer than 30 characters. Tables or columns with longer names cannot be captured.',
+    impact: 'Affected tables and columns never land in the destination. Fivetran does not raise a hard error, so customers usually only notice when an expected table is missing from the warehouse schema or a column returns no data in a report.',
     resolution: 'Switch to Binary Log Reader or Teleport Sync — both support the full Oracle 128-character object name limit. If staying on LogMiner, rename affected objects to fit the 30-character cap.'
   },
   // mongo
@@ -162,6 +167,7 @@ const knownIssues = [
     issue_title: 'Documents Larger Than 16 MB Are Skipped',
     issue_preview: 'Large documents never land in the destination',
     root_cause: 'Fivetran only syncs MongoDB documents smaller than 16 MB. Documents at or above that size are skipped with a warning.',
+    impact: 'The specific large documents are silently missing from the destination — only the size warning in the Fivetran log reveals the gap. Downstream counts and aggregates are under-reported for collections that mix small and large documents, often without the data team noticing.',
     resolution: 'Restructure large documents into smaller nested collections at the source. Alternatively, extract the specific fields needed into a separate collection that stays under 16 MB per document.'
   },
   {
@@ -169,6 +175,7 @@ const knownIssues = [
     issue_title: 'Atlas Free/Low-Tier Instances Not Supported',
     issue_preview: 'Sync fails on M0, M2, and M5 MongoDB Atlas clusters',
     root_cause: 'MongoDB Atlas tiers M0, M2, and M5 do not provide oplog access, which Fivetran requires as a fallback when change streams are unavailable.',
+    impact: 'PoCs and trials built on free/low-tier Atlas clusters cannot connect at all. The customer has to upgrade Atlas to M10+ (a real cost jump) before they can even validate the Fivetran integration, which stalls evaluations.',
     resolution: 'Upgrade the Atlas cluster to M10 or higher. Alternatively, use a self-managed MongoDB Replica Set that exposes the oplog.'
   },
   // dynamodb
@@ -177,6 +184,7 @@ const knownIssues = [
     issue_title: 'Stream Retention Is Only 24 Hours',
     issue_preview: 'Long sync gaps cause stream cursor expiry and force a full re-sync',
     root_cause: 'DynamoDB Streams retain change events for only 24 hours. If Fivetran cannot read the stream within that window (outage, paused connector), the cursor expires and captured changes are lost.',
+    impact: 'Any Fivetran outage or paused connector longer than 24 hours forces a full re-sync of every DynamoDB table, driving a large one-time MAR spike and blocking downstream freshness SLAs until the re-sync finishes. Large tables can take hours.',
     resolution: 'Keep sync cadence well under 24 hours. Monitor for paused connectors. When a stream expires, Fivetran automatically triggers a full source re-sync to restore consistency — plan MAR impact accordingly.'
   },
   {
@@ -184,7 +192,62 @@ const knownIssues = [
     issue_title: 'Changing Pack Mode Forces a Full Re-Sync',
     issue_preview: 'Switching between packed and unpacked triggers full re-import',
     root_cause: 'Packed mode stores each DynamoDB item as a single JSON column; unpacked mode expands attributes into columns. The destination schemas are incompatible, so switching modes requires a full re-sync.',
+    impact: 'Switching modes mid-pipeline triggers a full re-import of every configured DynamoDB table, doubling MAR for that sync cycle and temporarily breaking downstream queries that depend on the old column layout until models are updated.',
     resolution: 'Pick the right pack mode at setup and stick with it. If switching is required, schedule the re-sync during a low-activity window and expect elevated MAR. Unpacked is preferred for SQL-style analytics; packed is better for irregular or deeply nested items.'
+  },
+  // ─── NEW: additional issues to reach RICH tier ─────────────
+  // mysql_rds (+1)
+  {
+    connector_id: 'mysql_rds',
+    issue_title: 'GTID Mode Required for Reliable Multi-AZ Failover Recovery',
+    issue_preview: 'Connector loses binlog position after an RDS failover without GTID',
+    root_cause: 'Without Global Transaction Identifiers (GTID), Fivetran tracks its position using binlog file + offset. During a Multi-AZ failover, the new primary starts a fresh binlog file, and the old offset becomes meaningless.',
+    impact: 'After a failover, the connector cannot resume incremental sync and triggers a full re-sync of all tables. For large databases this means hours of downtime and a massive MAR spike — and failovers can happen without warning during AWS maintenance windows.',
+    resolution: 'Enable GTID in the RDS parameter group (gtid_mode=ON, enforce_gtid_consistency=ON). This lets Fivetran resume from the exact transaction ID regardless of which binlog file is active. Requires a brief reboot of the RDS instance.'
+  },
+  // mysql (+2)
+  {
+    connector_id: 'mysql',
+    issue_title: 'Binary Log Expiration Too Short Causes Unexpected Re-Sync',
+    issue_preview: 'Binlog files expire before Fivetran reads them',
+    root_cause: 'MySQL 8.0+ uses binlog_expire_logs_seconds (default 2592000 = 30 days), but some DBAs set it aggressively low to save disk space. If logs expire before Fivetran processes them, the connector loses its read position.',
+    impact: 'The connector silently falls behind, then triggers a full historical re-sync when it detects the gap. For multi-terabyte databases this can take days and spike MAR well beyond budget. No warning is surfaced until the re-sync begins.',
+    resolution: 'Set binlog_expire_logs_seconds to at least 86400 (24 hours) — ideally 7 days for connectors with infrequent sync schedules. Monitor Fivetran dashboard for "re-sync" warnings that may indicate binlog loss.'
+  },
+  {
+    connector_id: 'mysql',
+    issue_title: 'Teleport Sync Requires a Primary Key on Every Table',
+    issue_preview: 'Tables without primary keys fall back to full refresh every cycle',
+    root_cause: 'Fivetran Teleport Sync uses hash-based row comparison to detect changes. Without a primary key, it cannot identify which rows changed and must re-read the entire table on every sync cycle.',
+    impact: 'PK-less tables are effectively full-refresh, which scales poorly as the table grows. A 10M-row table without a PK consumes 10M MAR on every sync rather than just the changed rows — often a surprise on the monthly invoice.',
+    resolution: 'Add primary keys to all synced tables. If the source schema cannot be modified, switch those tables to binlog-based sync (which tracks changes by log position, not row identity) or accept the full-refresh MAR cost.'
+  },
+  // oracle (+1)
+  {
+    connector_id: 'oracle',
+    issue_title: 'Binary Log Reader Requires ARCHIVELOG Mode',
+    issue_preview: 'Redo logs are overwritten before Fivetran can read them in NOARCHIVELOG',
+    root_cause: 'Oracle Binary Log Reader reads redo log files for CDC. In NOARCHIVELOG mode, Oracle overwrites redo logs as soon as they are full, so Fivetran cannot read historical changes.',
+    impact: 'The connector fails to capture any incremental changes — every sync becomes a full refresh. On large Oracle databases (common in enterprise), this makes the pipeline unusable due to extreme MAR costs and sync durations.',
+    resolution: 'Switch the Oracle database to ARCHIVELOG mode (ALTER DATABASE ARCHIVELOG). This preserves redo logs until Fivetran reads them. Ensure sufficient disk space for archived logs and configure an appropriate retention policy.'
+  },
+  // mongo (+1)
+  {
+    connector_id: 'mongo',
+    issue_title: 'Deeply Nested Documents Create Extremely Wide Destination Tables',
+    issue_preview: 'Flattened collections produce hundreds of sparse columns',
+    root_cause: 'Fivetran flattens nested MongoDB documents into relational columns (e.g., address.city → address_city). Deeply nested or polymorphic documents create a new column for every unique key path across all documents in the collection.',
+    impact: 'Destination tables accumulate hundreds of mostly-NULL columns over time. Query performance degrades, warehouse storage costs increase, and BI tools struggle to display or filter on wide, sparse schemas.',
+    resolution: 'Limit unpacking depth at the collection level in Fivetran settings. For collections with highly variable schemas, consider restructuring documents at the source or syncing only the top-level fields needed for analytics.'
+  },
+  // dynamodb (+1)
+  {
+    connector_id: 'dynamodb',
+    issue_title: 'Unpacked Mode Accumulates Columns From Schema-Less Items',
+    issue_preview: 'Destination tables grow wider over time as new attributes appear',
+    root_cause: 'In unpacked mode, Fivetran maps each top-level DynamoDB attribute to a destination column. When different items have different attributes (common in schema-less DynamoDB patterns), every new attribute ever seen creates a permanent column.',
+    impact: 'The destination table grows wider over time with many NULL columns. Schema drift warnings fire under strict schema-change-handling settings, potentially blocking new attributes from syncing. Wide tables also degrade warehouse query performance.',
+    resolution: 'Use packed mode for schema-less workloads (stores items as a single JSON column, queryable via warehouse JSON functions). For unpacked mode, standardize item attributes at the application layer and use schema-change-handling set to "Allow all" to avoid blocked columns.'
   }
 ];
 
