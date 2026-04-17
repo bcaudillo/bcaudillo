@@ -38,7 +38,9 @@ const connectorMeta = {
   google_cloud_storage: { icon: 'G', iconClass: 'icon-google',       docsUrl: 'https://fivetran.com/docs/connectors/files/google-cloud-storage' },
   aws_lambda:       { icon: 'L', iconClass: 'icon-aws',              docsUrl: 'https://fivetran.com/docs/connectors/applications/aws-lambda' },
   azure_blob_storage: { icon: 'A', iconClass: 'icon-azure',          docsUrl: 'https://fivetran.com/docs/connectors/files/azure-blob-storage' },
-  mailchimp:        { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/mailchimp' }
+  mailchimp:        { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/mailchimp' },
+  slack:            { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/slack' },
+  zendesk:          { icon: 'Z', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/zendesk' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
