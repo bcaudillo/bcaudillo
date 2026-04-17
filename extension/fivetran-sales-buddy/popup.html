@@ -19,9 +19,17 @@
             <text x="120" y="70" font-family="'DM Sans', Arial, sans-serif" font-weight="700" font-size="54" fill="white" letter-spacing="-1">fivetran</text>
           </svg>
         </div>
-        <div style="margin-left:auto; position:relative; z-index:1;">
+        <div style="margin-left:auto; position:relative; z-index:1; display:flex; align-items:center; gap:6px;">
           <div class="badge">Connector Scout</div>
+          <div class="badge version-badge" id="version-badge">v0.2.0</div>
         </div>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="status-bar" id="status-bar">
+        <span id="status-dot" class="status-dot status-loading"></span>
+        <span id="status-text">Loading data...</span>
+        <span id="status-count" class="status-count"></span>
       </div>
 
       <!-- TOOLBAR -->

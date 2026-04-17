@@ -889,38 +889,61 @@ document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
 
 loadErrorCodes();
 
+// ─── STATUS BAR HELPERS ──────────────────────────────────────
+function setStatus(state, text, count) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  const cnt = document.getElementById('status-count');
+  if (dot) { dot.className = 'status-dot status-' + state; }
+  if (txt) { txt.textContent = text; }
+  if (cnt) { cnt.textContent = count || ''; }
+}
+
 // ─── BOOTSTRAP FROM SUPABASE ──────────────────────────────────────
 // Merge Supabase data with hardcoded fallback. Supabase adds connectors
 // not in the hardcoded set. For connectors that exist in both, keep the
 // richer version (more known issues wins). On failure, hardcoded stays.
 (async () => {
-  if (typeof loadConnectorDataFromSupabase !== 'function') return;
+  if (typeof loadConnectorDataFromSupabase !== 'function') {
+    setStatus('fallback', 'Offline — using built-in data', Object.keys(connectorData).length + ' connectors');
+    return;
+  }
   try {
     const fresh = await loadConnectorDataFromSupabase();
     if (!fresh || Object.keys(fresh).length === 0) {
       console.warn('Supabase returned no connectors — keeping hardcoded fallback.');
+      setStatus('fallback', 'Supabase empty — using built-in data', Object.keys(connectorData).length + ' connectors');
       return;
     }
+    let supaCount = 0;
+    let mergedFromSupa = 0;
     for (const [id, sup] of Object.entries(fresh)) {
+      supaCount++;
       const local = connectorData[id];
       if (!local) {
         connectorData[id] = sup;
+        mergedFromSupa++;
       } else {
         const supIssues = (sup.knownIssues || []).length;
         const localIssues = (local.knownIssues || []).length;
         if (supIssues > localIssues) {
           connectorData[id] = { ...sup, icon: local.icon, iconClass: local.iconClass, docsUrl: local.docsUrl || sup.docsUrl };
+          mergedFromSupa++;
         } else {
           connectorData[id] = { ...local, description: sup.description && sup.description.length > (local.description || '').length ? sup.description : local.description, whatItDoes: sup.whatItDoes && sup.whatItDoes.length > (local.whatItDoes || '').length ? sup.whatItDoes : local.whatItDoes };
         }
       }
     }
-    console.log(`Merged ${Object.keys(fresh).length} Supabase connectors with ${Object.keys(connectorData).length} total.`);
+    const total = Object.keys(connectorData).length;
+    const totalIssues = Object.values(connectorData).reduce((sum, c) => sum + (c.knownIssues || []).length, 0);
+    console.log(`Merged ${supaCount} Supabase connectors (${mergedFromSupa} used) with ${total} total.`);
+    setStatus('ok', `Supabase synced — ${supaCount} from DB, ${total} total`, totalIssues + ' issues');
 
     if (document.getElementById('known-issues-tab').style.display === 'block') {
       loadKnownIssuesTab();
     }
   } catch (err) {
     console.warn('Supabase load failed — using hardcoded fallback:', err);
+    setStatus('error', 'Supabase error — using built-in data', Object.keys(connectorData).length + ' connectors');
   }
 })();
