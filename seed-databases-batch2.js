@@ -177,6 +177,68 @@ const knownIssues = [
     root_cause: 'Heroku Postgres does not expose the logical replication features that pgoutput requires. Heroku customers have no way to enable it.',
     impact: 'Customers on Heroku cannot get true CDC — delete tracking without a primary key is impossible, and Query-Based polling puts steady read load on the primary database. For high-write OLTP apps, freshness and source performance both suffer noticeably vs. WAL-based CDC.',
     resolution: 'Use Query-Based incremental sync (xmin polling) instead. Accept the trade-off: slightly higher source load and no delete tracking without a primary key. If WAL-based CDC is critical, migrate to RDS PostgreSQL or Aurora PostgreSQL. You can also request logical replication support from Heroku.'
+  },
+  // ─── NEW: additional issues to reach RICH tier ─────────────
+  // azure_sql_db (+1)
+  {
+    connector_id: 'azure_sql_db',
+    issue_title: 'CDC Cleanup Agent Must Be Running to Prevent Storage Bloat',
+    issue_preview: 'Change tables grow unbounded if CDC cleanup is misconfigured',
+    root_cause: 'Azure SQL Database CDC stores change records in internal change tables. The cleanup agent must be running to purge old records. If it is disabled or misconfigured, change tables grow indefinitely.',
+    impact: 'Without cleanup, CDC change tables consume increasing storage on the Azure SQL instance, slowing queries on the source database and eventually causing storage alerts or throttling. Fivetran CDC reads also slow down as they scan larger change tables.',
+    resolution: 'Verify CDC is enabled via sys.sp_cdc_enable_db and that the cleanup job is active with a reasonable retention (typically 3 days). Monitor change table sizes in sys.dm_cdc_log_scan_sessions. If cleanup stopped, re-enable it and manually purge accumulated records.'
+  },
+  // mariadb (+1)
+  {
+    connector_id: 'mariadb',
+    issue_title: 'Fractional Seconds Lost on MariaDB Before 10.1.2',
+    issue_preview: 'Sub-second timestamp precision is truncated in the destination',
+    root_cause: 'MariaDB versions before 10.1.2 have a known bug where fractional seconds in DATETIME and TIMESTAMP columns are truncated or rounded in binlog events. Fivetran receives the truncated values and writes them to the destination.',
+    impact: 'Destination timestamps lose sub-second precision. Time-series analytics, event ordering, and deduplication logic that depend on fractional seconds produce incorrect results. This is especially problematic for high-throughput event tables where multiple rows share the same truncated second.',
+    resolution: 'Upgrade MariaDB to 10.1.2 or later where the bug is fixed. If upgrading is not feasible, avoid relying on fractional-second precision for downstream deduplication or ordering — use an auto-increment ID or UUID as the primary ordering key instead.'
+  },
+  // aurora (+2)
+  {
+    connector_id: 'aurora',
+    issue_title: 'Default Binlog Retention Is Too Short for Sync Gaps',
+    issue_preview: 'Aurora purges binlog before Fivetran catches up after a pause',
+    root_cause: 'Aurora MySQL binlog retention defaults to a short window. If a Fivetran connector is paused, delayed, or experiences a sync error that lasts longer than the retention window, the binlog cursor expires.',
+    impact: 'After any gap longer than the retention window, the connector loses its binlog position and triggers a full historical re-sync of all tables. For large Aurora databases this means elevated MAR, extended sync times, and stale dashboards during the re-sync.',
+    resolution: 'Maximize binlog retention: CALL mysql.rds_set_configuration(\'binlog retention hours\', 168) for 7 days. Monitor for paused or erroring connectors and resolve them quickly. Set up Fivetran alerts for connectors that have not synced in >12 hours.'
+  },
+  {
+    connector_id: 'aurora',
+    issue_title: 'TLS Required for All External Connections to Aurora',
+    issue_preview: 'Connector fails with SSL handshake error if TLS not enabled',
+    root_cause: 'Aurora MySQL enforces TLS for all external connections by default. If the Fivetran connector is configured without SSL/TLS, the connection is rejected during the handshake before any data flows.',
+    impact: 'Connector setup fails immediately with a cryptic SSL handshake error. First-time users often assume it is a network/firewall issue and spend time debugging security groups and VPC settings before realizing it is a TLS configuration problem.',
+    resolution: 'Enable TLS in the Fivetran connector setup form. Aurora handles server-side certificates automatically via the AWS RDS CA bundle — no client certificate is needed. If connecting via SSH tunnel or AWS PrivateLink, TLS is still required on the database leg.'
+  },
+  // aurora_postgres (+1)
+  {
+    connector_id: 'aurora_postgres',
+    issue_title: 'WAL Replication Slot Buildup During Extended Pauses',
+    issue_preview: 'Paused connector causes WAL files to accumulate and fill disk',
+    root_cause: 'When a Fivetran connector is paused, the logical replication slot retains all WAL files produced since the pause began. Aurora PostgreSQL does not automatically drop idle replication slots.',
+    impact: 'WAL files accumulate on the primary node, consuming storage progressively. If left unchecked, the Aurora volume can fill up, causing the cluster to become read-only or fail entirely — a production-down scenario triggered by a paused analytics pipeline.',
+    resolution: 'Monitor replication slot lag via pg_replication_slots (check restart_lsn vs. current WAL position). If pausing a connector for more than a few hours, consider dropping the replication slot and re-creating it when unpausing — this triggers a re-sync but prevents storage exhaustion.'
+  },
+  // heroku_postgres (+2)
+  {
+    connector_id: 'heroku_postgres',
+    issue_title: 'Low Connection Limits on Hobby and Basic Plans',
+    issue_preview: 'Fivetran connection competes with application for limited slots',
+    root_cause: 'Heroku Postgres Hobby plans allow only 20 connections and Basic plans allow 500. Fivetran maintains a persistent connection for polling, consuming one of these limited slots at all times.',
+    impact: 'On Hobby plans, Fivetran\'s persistent connection can crowd out application connections, causing intermittent "too many connections" errors in the production app. The Fivetran sync itself may also fail intermittently if it cannot obtain a connection.',
+    resolution: 'Upgrade to Standard or Premium plans for higher connection limits. Alternatively, use a connection pooler like PgBouncer on the Heroku side to multiplex connections. Monitor active connections via pg_stat_activity to ensure headroom.'
+  },
+  {
+    connector_id: 'heroku_postgres',
+    issue_title: 'Credential Rotation Silently Breaks Fivetran Connection',
+    issue_preview: 'Sync stops after Heroku rotates database credentials',
+    root_cause: 'Heroku periodically rotates database credentials during maintenance, plan changes, or manual credential resets. The new credentials are reflected in the DATABASE_URL config var, but Fivetran stores the original credentials and has no automatic refresh mechanism.',
+    impact: 'After a credential rotation, Fivetran silently fails to connect. The sync stops with an auth error, but the AE or customer may not notice for days until downstream reports go stale — especially if Fivetran email alerts are not configured.',
+    resolution: 'After any Heroku credential rotation event, immediately update the Fivetran connector settings with the new host, username, and password from the Heroku dashboard (Settings → Database Credentials). Set up Fivetran connector alerts to catch auth failures early.'
   }
 ];
 

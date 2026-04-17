@@ -194,6 +194,60 @@ const knownIssues = [
     root_cause: 'Packed mode stores each DynamoDB item as a single JSON column; unpacked mode expands attributes into columns. The destination schemas are incompatible, so switching modes requires a full re-sync.',
     impact: 'Switching modes mid-pipeline triggers a full re-import of every configured DynamoDB table, doubling MAR for that sync cycle and temporarily breaking downstream queries that depend on the old column layout until models are updated.',
     resolution: 'Pick the right pack mode at setup and stick with it. If switching is required, schedule the re-sync during a low-activity window and expect elevated MAR. Unpacked is preferred for SQL-style analytics; packed is better for irregular or deeply nested items.'
+  },
+  // ─── NEW: additional issues to reach RICH tier ─────────────
+  // mysql_rds (+1)
+  {
+    connector_id: 'mysql_rds',
+    issue_title: 'GTID Mode Required for Reliable Multi-AZ Failover Recovery',
+    issue_preview: 'Connector loses binlog position after an RDS failover without GTID',
+    root_cause: 'Without Global Transaction Identifiers (GTID), Fivetran tracks its position using binlog file + offset. During a Multi-AZ failover, the new primary starts a fresh binlog file, and the old offset becomes meaningless.',
+    impact: 'After a failover, the connector cannot resume incremental sync and triggers a full re-sync of all tables. For large databases this means hours of downtime and a massive MAR spike — and failovers can happen without warning during AWS maintenance windows.',
+    resolution: 'Enable GTID in the RDS parameter group (gtid_mode=ON, enforce_gtid_consistency=ON). This lets Fivetran resume from the exact transaction ID regardless of which binlog file is active. Requires a brief reboot of the RDS instance.'
+  },
+  // mysql (+2)
+  {
+    connector_id: 'mysql',
+    issue_title: 'Binary Log Expiration Too Short Causes Unexpected Re-Sync',
+    issue_preview: 'Binlog files expire before Fivetran reads them',
+    root_cause: 'MySQL 8.0+ uses binlog_expire_logs_seconds (default 2592000 = 30 days), but some DBAs set it aggressively low to save disk space. If logs expire before Fivetran processes them, the connector loses its read position.',
+    impact: 'The connector silently falls behind, then triggers a full historical re-sync when it detects the gap. For multi-terabyte databases this can take days and spike MAR well beyond budget. No warning is surfaced until the re-sync begins.',
+    resolution: 'Set binlog_expire_logs_seconds to at least 86400 (24 hours) — ideally 7 days for connectors with infrequent sync schedules. Monitor Fivetran dashboard for "re-sync" warnings that may indicate binlog loss.'
+  },
+  {
+    connector_id: 'mysql',
+    issue_title: 'Teleport Sync Requires a Primary Key on Every Table',
+    issue_preview: 'Tables without primary keys fall back to full refresh every cycle',
+    root_cause: 'Fivetran Teleport Sync uses hash-based row comparison to detect changes. Without a primary key, it cannot identify which rows changed and must re-read the entire table on every sync cycle.',
+    impact: 'PK-less tables are effectively full-refresh, which scales poorly as the table grows. A 10M-row table without a PK consumes 10M MAR on every sync rather than just the changed rows — often a surprise on the monthly invoice.',
+    resolution: 'Add primary keys to all synced tables. If the source schema cannot be modified, switch those tables to binlog-based sync (which tracks changes by log position, not row identity) or accept the full-refresh MAR cost.'
+  },
+  // oracle (+1)
+  {
+    connector_id: 'oracle',
+    issue_title: 'Binary Log Reader Requires ARCHIVELOG Mode',
+    issue_preview: 'Redo logs are overwritten before Fivetran can read them in NOARCHIVELOG',
+    root_cause: 'Oracle Binary Log Reader reads redo log files for CDC. In NOARCHIVELOG mode, Oracle overwrites redo logs as soon as they are full, so Fivetran cannot read historical changes.',
+    impact: 'The connector fails to capture any incremental changes — every sync becomes a full refresh. On large Oracle databases (common in enterprise), this makes the pipeline unusable due to extreme MAR costs and sync durations.',
+    resolution: 'Switch the Oracle database to ARCHIVELOG mode (ALTER DATABASE ARCHIVELOG). This preserves redo logs until Fivetran reads them. Ensure sufficient disk space for archived logs and configure an appropriate retention policy.'
+  },
+  // mongo (+1)
+  {
+    connector_id: 'mongo',
+    issue_title: 'Deeply Nested Documents Create Extremely Wide Destination Tables',
+    issue_preview: 'Flattened collections produce hundreds of sparse columns',
+    root_cause: 'Fivetran flattens nested MongoDB documents into relational columns (e.g., address.city → address_city). Deeply nested or polymorphic documents create a new column for every unique key path across all documents in the collection.',
+    impact: 'Destination tables accumulate hundreds of mostly-NULL columns over time. Query performance degrades, warehouse storage costs increase, and BI tools struggle to display or filter on wide, sparse schemas.',
+    resolution: 'Limit unpacking depth at the collection level in Fivetran settings. For collections with highly variable schemas, consider restructuring documents at the source or syncing only the top-level fields needed for analytics.'
+  },
+  // dynamodb (+1)
+  {
+    connector_id: 'dynamodb',
+    issue_title: 'Unpacked Mode Accumulates Columns From Schema-Less Items',
+    issue_preview: 'Destination tables grow wider over time as new attributes appear',
+    root_cause: 'In unpacked mode, Fivetran maps each top-level DynamoDB attribute to a destination column. When different items have different attributes (common in schema-less DynamoDB patterns), every new attribute ever seen creates a permanent column.',
+    impact: 'The destination table grows wider over time with many NULL columns. Schema drift warnings fire under strict schema-change-handling settings, potentially blocking new attributes from syncing. Wide tables also degrade warehouse query performance.',
+    resolution: 'Use packed mode for schema-less workloads (stores items as a single JSON column, queryable via warehouse JSON functions). For unpacked mode, standardize item attributes at the application layer and use schema-change-handling set to "Allow all" to avoid blocked columns.'
   }
 ];
 
