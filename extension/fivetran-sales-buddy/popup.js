@@ -890,8 +890,9 @@ document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
 loadErrorCodes();
 
 // ─── BOOTSTRAP FROM SUPABASE ──────────────────────────────────────
-// Replace the hardcoded connectorData with the real data from Supabase.
-// On failure, the hardcoded fallback (HubSpot/Salesforce/Stripe) stays in place.
+// Merge Supabase data with hardcoded fallback. Supabase adds connectors
+// not in the hardcoded set. For connectors that exist in both, keep the
+// richer version (more known issues wins). On failure, hardcoded stays.
 (async () => {
   if (typeof loadConnectorDataFromSupabase !== 'function') return;
   try {
@@ -900,13 +901,22 @@ loadErrorCodes();
       console.warn('Supabase returned no connectors — keeping hardcoded fallback.');
       return;
     }
-    // Wipe hardcoded entries, splice in Supabase results.
-    for (const k of Object.keys(connectorData)) delete connectorData[k];
-    Object.assign(connectorData, fresh);
-    console.log(`Loaded ${Object.keys(connectorData).length} connectors from Supabase.`);
+    for (const [id, sup] of Object.entries(fresh)) {
+      const local = connectorData[id];
+      if (!local) {
+        connectorData[id] = sup;
+      } else {
+        const supIssues = (sup.knownIssues || []).length;
+        const localIssues = (local.knownIssues || []).length;
+        if (supIssues > localIssues) {
+          connectorData[id] = { ...sup, icon: local.icon, iconClass: local.iconClass, docsUrl: local.docsUrl || sup.docsUrl };
+        } else {
+          connectorData[id] = { ...local, description: sup.description && sup.description.length > (local.description || '').length ? sup.description : local.description, whatItDoes: sup.whatItDoes && sup.whatItDoes.length > (local.whatItDoes || '').length ? sup.whatItDoes : local.whatItDoes };
+        }
+      }
+    }
+    console.log(`Merged ${Object.keys(fresh).length} Supabase connectors with ${Object.keys(connectorData).length} total.`);
 
-    // If the Known Issues tab is currently open, refresh its picker so the
-    // newly-loaded connectors show up immediately.
     if (document.getElementById('known-issues-tab').style.display === 'block') {
       loadKnownIssuesTab();
     }

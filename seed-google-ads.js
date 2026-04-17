@@ -162,6 +162,14 @@ const knownIssues = [
     root_cause: 'The Google Ads API enforces a slower sync speed for the CAMPAIGN_SEARCH_TERM_INSIGHT report than for other reports. Fivetran cannot work around this.',
     impact: 'Historical syncs that include this table take significantly longer, and incremental syncs may fall behind schedule when this table is enabled alongside other heavy tables.',
     resolution: 'Disable CAMPAIGN_SEARCH_TERM_INSIGHT in the Schema tab if you do not actively need it. If you do need it, run it on a less-frequent schedule or dedicated connection.'
+  },
+  {
+    connector_id: CONNECTOR_ID,
+    issue_title: 'Removed Ads and Keywords Still Appear in Destination',
+    issue_preview: 'Deleted Google Ads entities persist in warehouse tables without clear status',
+    root_cause: 'When an ad, keyword, or ad group is removed in Google Ads, the Google Ads API marks it with a status of REMOVED but does not delete the record. Fivetran mirrors this behavior — the row remains in the destination with its status updated to REMOVED, but it is never hard-deleted.',
+    impact: 'Reports that do not filter on entity status overcount active ads, keywords, and ad groups. Performance dashboards show inflated totals for active campaigns. Over time, the ratio of removed-to-active entities grows, making the tables increasingly noisy and queries slower if no status filter is applied.',
+    resolution: 'Add WHERE ad_status != "REMOVED" (or equivalent for keywords, ad groups) to all downstream queries and dbt models. Consider creating a filtered view or intermediate dbt model that excludes removed entities by default so analysts do not need to remember the filter.'
   }
 ];
 
