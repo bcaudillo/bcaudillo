@@ -49,10 +49,21 @@
     const typeCounts = new Map();
 
     // Primary: grab every source-type span Fivetran renders.
+    // Both connection names and source types share span.ndnOq. Key difference:
+    // connection names are inside <a> tags (clickable links to detail pages),
+    // while source types are plain spans not wrapped in a link.
+    // Also filter out column headers that share the same CSS class.
+    const HEADER_LABELS = new Set([
+      'Connection name', 'Source type', 'Destination', 'Status',
+      'Last synced', 'Sync frequency', 'Schema', 'Setup state',
+      'Data source', 'Usage', 'Tables'
+    ]);
     const sourceTypeSpans = document.querySelectorAll('span.ndnOq');
     for (const span of sourceTypeSpans) {
       const t = (span.textContent || '').trim();
-      if (!t) continue;
+      if (!t || HEADER_LABELS.has(t)) continue;
+      // Skip if this span is inside an <a> tag — that's a connection name, not source type.
+      if (span.closest('a')) continue;
       typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
     }
 
