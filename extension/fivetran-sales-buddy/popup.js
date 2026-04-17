@@ -512,16 +512,17 @@ function handleErrorResults(response) {
     <span>Found <strong>${response.errors.length} error${response.errors.length === 1 ? '' : 's'}</strong></span>
   </div>`;
 
-  // Cross-reference errors with our troubleshooting data to find matching error codes.
   r.innerHTML += response.errors.map(err => {
+    const errLower = err.text.toLowerCase();
+    const errWords = errLower.split(/\s+/).filter(w => w.length > 3);
+
+    // 1. Try to match against generic error codes (troubleshootingData).
     let matchedCode = null;
     if (typeof troubleshootingData !== 'undefined') {
-      const errLower = err.text.toLowerCase();
       for (let i = 0; i < troubleshootingData.length; i++) {
         const ts = troubleshootingData[i];
         const code = (ts.errorCode || '').toString();
         const title = (ts.title || '').toLowerCase();
-        const keywords = (ts.description || '').toLowerCase();
         if ((code && errLower.includes(code)) ||
             title.split(/\s+/).some(w => w.length > 3 && errLower.includes(w))) {
           matchedCode = { idx: i, ...ts };
@@ -530,14 +531,79 @@ function handleErrorResults(response) {
       }
     }
 
-    const contextTag = err.context
-      ? `<span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 6px;border-radius:3px;margin-left:6px;">${err.context}</span>`
-      : '';
-    const sourceTag = `<span style="font-size:9px;color:var(--ft-text-light);margin-left:auto;">${err.source}</span>`;
+    // 2. Try to match against per-connector known issues.
+    //    If we have a connector context (from the scanner), check that connector first.
+    //    Then also scan all connectors for keyword overlap.
+    let matchedIssue = null;
+    let matchedConnectorKey = null;
 
-    let matchLine = '';
+    function scoreIssue(issue) {
+      const fields = [
+        issue.title || '',
+        issue.preview || '',
+        issue.rootCause || '',
+        issue.resolution || ''
+      ].join(' ').toLowerCase();
+      let score = 0;
+      for (const w of errWords) {
+        if (fields.includes(w)) score++;
+      }
+      return score;
+    }
+
+    // Check the context connector first (highest confidence).
+    if (err.context) {
+      const ctxKey = mapSourceTypeToKey(err.context);
+      if (ctxKey && connectorData[ctxKey] && connectorData[ctxKey].knownIssues) {
+        let bestScore = 0;
+        for (const issue of connectorData[ctxKey].knownIssues) {
+          const s = scoreIssue(issue);
+          if (s > bestScore && s >= 2) {
+            bestScore = s;
+            matchedIssue = issue;
+            matchedConnectorKey = ctxKey;
+          }
+        }
+      }
+    }
+
+    // If no context match, scan all connectors for a relevant known issue.
+    if (!matchedIssue) {
+      let bestScore = 0;
+      for (const [key, data] of Object.entries(connectorData)) {
+        if (!data.knownIssues) continue;
+        for (const issue of data.knownIssues) {
+          const s = scoreIssue(issue);
+          if (s > bestScore && s >= 3) {
+            bestScore = s;
+            matchedIssue = issue;
+            matchedConnectorKey = key;
+          }
+        }
+      }
+    }
+
+    // Render the error card.
+    const contextTag = err.context
+      ? `<span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 6px;border-radius:3px;">${err.context}</span>`
+      : '';
+
+    let matchLines = '';
+
+    // Show connector known-issue match (highest value for the AE).
+    if (matchedIssue) {
+      const cName = connectorData[matchedConnectorKey]?.name || matchedConnectorKey;
+      matchLines += `<div style="margin-top:6px;padding:8px 10px;background:#F0F4FF;border:1px solid #C7D7FE;border-radius:6px;font-size:11px;">
+        <div style="font-weight:700;color:var(--ft-text-dark);margin-bottom:4px;">${cName}: ${matchedIssue.title}</div>
+        ${matchedIssue.rootCause ? `<div style="color:var(--ft-text-mid);margin-bottom:3px;"><strong>Root cause:</strong> ${matchedIssue.rootCause.substring(0, 200)}</div>` : ''}
+        ${matchedIssue.impact ? `<div style="color:var(--ft-text-mid);margin-bottom:3px;"><strong>Impact:</strong> ${matchedIssue.impact.substring(0, 200)}</div>` : ''}
+        ${matchedIssue.resolution ? `<div style="color:#16a34a;"><strong>Fix:</strong> ${matchedIssue.resolution.substring(0, 200)}</div>` : ''}
+      </div>`;
+    }
+
+    // Show generic error-code match as secondary.
     if (matchedCode) {
-      matchLine = `<div style="margin-top:6px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
+      matchLines += `<div style="margin-top:4px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
         <strong>${matchedCode.errorCode} – ${matchedCode.title}</strong> <span style="color:var(--ft-blue);">View fix →</span>
       </div>`;
     }
@@ -545,10 +611,10 @@ function handleErrorResults(response) {
     return `<div style="padding:10px 12px;border-bottom:1px solid #F1F3F8;">
       <div style="display:flex;align-items:center;gap:4px;">
         <span style="color:#ef4444;font-weight:700;font-size:12px;">●</span>
-        <span style="font-size:12px;color:var(--ft-text-dark);word-break:break-word;">${err.text.substring(0, 200)}</span>
+        <span style="font-size:12px;color:var(--ft-text-dark);word-break:break-word;">${err.text.substring(0, 300)}</span>
       </div>
-      <div style="display:flex;align-items:center;margin-top:4px;">${contextTag}${sourceTag}</div>
-      ${matchLine}
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">${contextTag}</div>
+      ${matchLines}
     </div>`;
   }).join('');
 }
