@@ -32,7 +32,9 @@ const connectorMeta = {
   aurora_postgres:  { icon: 'A', iconClass: 'icon-aws',              docsUrl: 'https://fivetran.com/docs/connectors/databases/postgresql/aurora-configuration' },
   heroku_postgres:  { icon: 'H', iconClass: 'icon-postgres',         docsUrl: 'https://fivetran.com/docs/connectors/databases/postgresql/heroku-setup-guide' },
   sftp:             { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/files/sftp' },
-  fivetran_log:     { icon: 'F', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/fivetran-log' }
+  fivetran_log:     { icon: 'F', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/fivetran-log' },
+  email:            { icon: 'E', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/email' },
+  webhooks:         { icon: 'W', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/webhooks' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
