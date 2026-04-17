@@ -34,11 +34,14 @@
 
       <div class="content">
         <div id="scan" class="section active">
-          <button class="scan-button" data-action="scanDashboard">⚡ Scan Fivetran Dashboard</button>
+          <div style="display:flex;gap:8px;">
+            <button class="scan-button" data-action="scanDashboard" style="flex:1;">⚡ Scan Connectors</button>
+            <button class="scan-button" data-action="scanErrors" style="flex:1;">🚨 Scan Errors</button>
+          </div>
           <div id="scan-results">
             <div class="empty-state">
               <div class="icon">📡</div>
-              <p>Scan a Fivetran dashboard to detect<br/>active connectors and tables</p>
+              <p>Scan a Fivetran dashboard to detect<br/>active connectors and errors</p>
             </div>
           </div>
         </div>

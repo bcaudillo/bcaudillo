@@ -456,6 +456,103 @@ function handleScanResults(response) {
   }
 }
 
+// ─── ERROR SCAN ──────────────────────────────────────
+function scanErrors() {
+  const r = document.getElementById('scan-results');
+  const btns = document.querySelectorAll('.scan-button');
+  btns.forEach(b => { b.disabled = true; });
+
+  if (typeof chrome !== 'undefined' && chrome.tabs) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
+
+      if (!tab.url || !tab.url.includes('fivetran.com')) {
+        r.innerHTML = `<div style="text-align:center;padding:20px;color:var(--ft-text-light);">
+          <div style="font-size:28px;margin-bottom:8px;">🌐</div>
+          <p style="font-size:13px;">Navigate to <strong>fivetran.com</strong> to scan for errors</p>
+        </div>`;
+        btns.forEach(b => { b.disabled = false; });
+        return;
+      }
+
+      chrome.tabs.sendMessage(tab.id, { action: 'scanErrors' }, (response) => {
+        if (chrome.runtime.lastError || !response) {
+          r.innerHTML = `<div style="text-align:center;padding:20px;color:var(--ft-text-light);">
+            <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+            <p style="font-size:13px;">Could not scan for errors. Try refreshing the page.</p>
+          </div>`;
+          btns.forEach(b => { b.disabled = false; });
+          return;
+        }
+        handleErrorResults(response);
+        btns.forEach(b => { b.disabled = false; });
+      });
+    });
+  } else {
+    setTimeout(() => {
+      handleErrorResults({ page: 'error-scan', count: 0, errors: [] });
+      btns.forEach(b => { b.disabled = false; });
+    }, 400);
+  }
+}
+
+function handleErrorResults(response) {
+  const r = document.getElementById('scan-results');
+
+  if (!response.errors || response.errors.length === 0) {
+    r.innerHTML = `<div class="scan-status" style="background:#F0FDF4;border-color:#86EFAC;">
+      <div class="check" style="background:#22c55e;">✓</div>
+      <span>No errors detected on this page</span>
+    </div>`;
+    return;
+  }
+
+  r.innerHTML = `<div class="scan-status" style="background:#FEF2F2;border-color:#FCA5A5;">
+    <div class="check" style="background:#ef4444;">!</div>
+    <span>Found <strong>${response.errors.length} error${response.errors.length === 1 ? '' : 's'}</strong></span>
+  </div>`;
+
+  // Cross-reference errors with our troubleshooting data to find matching error codes.
+  r.innerHTML += response.errors.map(err => {
+    let matchedCode = null;
+    if (typeof troubleshootingData !== 'undefined') {
+      const errLower = err.text.toLowerCase();
+      for (let i = 0; i < troubleshootingData.length; i++) {
+        const ts = troubleshootingData[i];
+        const code = (ts.errorCode || '').toString();
+        const title = (ts.title || '').toLowerCase();
+        const keywords = (ts.description || '').toLowerCase();
+        if ((code && errLower.includes(code)) ||
+            title.split(/\s+/).some(w => w.length > 3 && errLower.includes(w))) {
+          matchedCode = { idx: i, ...ts };
+          break;
+        }
+      }
+    }
+
+    const contextTag = err.context
+      ? `<span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 6px;border-radius:3px;margin-left:6px;">${err.context}</span>`
+      : '';
+    const sourceTag = `<span style="font-size:9px;color:var(--ft-text-light);margin-left:auto;">${err.source}</span>`;
+
+    let matchLine = '';
+    if (matchedCode) {
+      matchLine = `<div style="margin-top:6px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
+        <strong>${matchedCode.errorCode} – ${matchedCode.title}</strong> <span style="color:var(--ft-blue);">View fix →</span>
+      </div>`;
+    }
+
+    return `<div style="padding:10px 12px;border-bottom:1px solid #F1F3F8;">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="color:#ef4444;font-weight:700;font-size:12px;">●</span>
+        <span style="font-size:12px;color:var(--ft-text-dark);word-break:break-word;">${err.text.substring(0, 200)}</span>
+      </div>
+      <div style="display:flex;align-items:center;margin-top:4px;">${contextTag}${sourceTag}</div>
+      ${matchLine}
+    </div>`;
+  }).join('');
+}
+
 // ─── ERROR CODES ──────────────────────────────────────
 function loadErrorCodes() {
   document.getElementById('error-codes').innerHTML = troubleshootingData.map((item, idx) => `
@@ -683,6 +780,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'scanDashboard':
       scanDashboard();
+      break;
+    case 'scanErrors':
+      scanErrors();
       break;
     case 'showConnectorDetails':
       showConnectorDetails(key);
