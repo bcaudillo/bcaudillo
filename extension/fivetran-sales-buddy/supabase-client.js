@@ -57,7 +57,12 @@ const connectorMeta = {
   salesloft:        { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/salesloft' },
   pipedrive:        { icon: 'P', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/pipedrive' },
   chargebee:        { icon: 'C', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/chargebee' },
-  github:           { icon: 'G', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/github' }
+  github:           { icon: 'G', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/github' },
+  quickbooks:       { icon: 'Q', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/quickbooks' },
+  netsuite:         { icon: 'N', iconClass: 'icon-oracle',            docsUrl: 'https://fivetran.com/docs/connectors/applications/netsuite' },
+  xero:             { icon: 'X', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/xero' },
+  freshdesk:        { icon: 'F', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/freshdesk' },
+  sendgrid:         { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/sendgrid' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
