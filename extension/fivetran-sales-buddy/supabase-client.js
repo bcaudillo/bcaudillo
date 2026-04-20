@@ -52,7 +52,12 @@ const connectorMeta = {
   tiktok_ads:       { icon: 'T', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/tiktok-ads' },
   klaviyo:          { icon: 'K', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/klaviyo' },
   braze:            { icon: 'B', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/braze' },
-  intercom:         { icon: 'I', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/intercom' }
+  intercom:         { icon: 'I', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/intercom' },
+  outreach:         { icon: 'O', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/outreach' },
+  salesloft:        { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/salesloft' },
+  pipedrive:        { icon: 'P', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/pipedrive' },
+  chargebee:        { icon: 'C', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/chargebee' },
+  github:           { icon: 'G', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/github' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
