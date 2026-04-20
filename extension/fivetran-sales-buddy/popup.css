@@ -140,6 +140,7 @@
     .icon-oracle { background: #C74634; }
     .icon-mongo { background: #47A248; }
     .icon-azure { background: #0078D4; }
+    .icon-linkedin { background: #0A66C2; }
     .icon-default { background: var(--ft-text-light); }
     .detected-tables { font-size: 12px; color: var(--ft-text-mid); }
     .table-row { margin-top: 5px; display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }

@@ -47,7 +47,12 @@ const connectorMeta = {
   redshift_db:      { icon: 'R', iconClass: 'icon-aws',               docsUrl: 'https://fivetran.com/docs/connectors/databases/redshift' },
   marketo:          { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/marketo' },
   amplitude:        { icon: 'A', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/amplitude' },
-  mixpanel:         { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/mixpanel' }
+  mixpanel:         { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/mixpanel' },
+  linkedin_ads:     { icon: 'L', iconClass: 'icon-linkedin',          docsUrl: 'https://fivetran.com/docs/connectors/applications/linkedin-ads' },
+  tiktok_ads:       { icon: 'T', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/tiktok-ads' },
+  klaviyo:          { icon: 'K', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/klaviyo' },
+  braze:            { icon: 'B', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/braze' },
+  intercom:         { icon: 'I', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/intercom' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
