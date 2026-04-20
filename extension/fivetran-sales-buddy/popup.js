@@ -226,7 +226,7 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.toolbar button').forEach(el => el.classList.remove('active'));
   document.getElementById(tab).classList.add('active');
   btn.classList.add('active');
-  document.getElementById('details').classList.remove('active');
+  closeDetails();
   if (tab === 'troubleshoot') {
     loadErrorCodes();
     if (scannedConnectors.length > 0) {
@@ -656,8 +656,12 @@ function loadKnownIssuesTab() {
     }).join('')}
   </div>`;
 
-  // Clear results — user picks a connector first
   resultsDiv.innerHTML = '';
+
+  if (connectorsToShow.length > 0) {
+    const firstBtn = pickerDiv.querySelector('.connector-pick-btn');
+    if (firstBtn) selectConnectorIssues(connectorsToShow[0], firstBtn);
+  }
 }
 
 function selectConnectorIssues(connectorKey, btn) {
@@ -745,10 +749,10 @@ function showConnectorDetails(key) {
     </div>
     <div class="detail-section"><div class="detail-label">Known Issues (${c.knownIssues.length})</div>
       ${c.knownIssues.slice(0, 3).map((issue, i) => `<div class="known-issue-item ${getCatCSS(issue.category)}" style="margin-top:6px;" data-action="showKnownIssueDetails" data-key="${key}" data-idx="${i}"><div class="issue-title">${issue.title}</div><div class="issue-preview">${issue.preview}</div></div>`).join('')}
-      ${c.knownIssues.length > 3 ? `<div style="text-align:center;margin-top:8px;"><a class="learn-more" data-action="viewAllIssues">View all ${c.knownIssues.length} issues →</a></div>` : ''}
+      ${c.knownIssues.length > 3 ? `<div style="text-align:center;margin-top:8px;"><a class="learn-more" data-action="viewAllIssues" data-key="${key}">View all ${c.knownIssues.length} issues →</a></div>` : ''}
     </div>
     ${c.docsUrl ? `<div class="detail-section" style="margin-top:4px;"><a href="${c.docsUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ft-blue);text-decoration:none;padding:10px 14px;background:var(--ft-blue-light);border-radius:8px;border:1.5px solid var(--ft-border);width:100%;justify-content:center;">📄 View full Fivetran docs →</a></div>` : ''}`;
-  d.classList.add('active');
+  openDetails();
 }
 
 function showTableDetails(key, idx) {
@@ -759,14 +763,18 @@ function showTableDetails(key, idx) {
     <div class="detail-section"><div class="detail-label">What it contains</div><div class="detail-text">${t.whatContains}</div></div>
     <div class="detail-section"><div class="detail-label">Why it matters</div><div class="detail-text">${t.whyMatters}</div></div>
     ${t.keyCallouts ? `<div class="detail-section"><div class="detail-label">Key callouts</div><div class="detail-text" style="color:#b45309;background:#fffbeb;padding:10px 12px;border-radius:8px;border:1px solid #fde68a;">⚡ ${t.keyCallouts}</div></div>` : ''}`;
-  d.classList.add('active');
+  openDetails();
 }
 
 function showKnownIssueDetails(key, idx) {
   const c = connectorData[key]; const issue = c.knownIssues[idx]; const d = document.getElementById('details');
   const cat = issue.category || 'General';
+  const isDeepNav = d.classList.contains('active');
+  const backHtml = isDeepNav
+    ? `<div class="close" data-action="showConnectorDetails" data-key="${key}">← Back to ${c.name}</div>`
+    : `<div class="close" data-action="closeDetails">← Back</div>`;
   let html = `
-    <div class="close" data-action="closeDetails">← Back</div>
+    ${backHtml}
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
       <div class="connector-icon ${c.iconClass}" style="width:20px;height:20px;font-size:10px;">${c.icon}</div>
       <span style="font-size:12px;color:var(--ft-text-mid);">${c.name}</span>
@@ -781,7 +789,7 @@ function showKnownIssueDetails(key, idx) {
     issue.subIssues.forEach(s => { html += `<div class="sub-issue"><div class="sub-issue-title">${s.title}</div><div class="sub-issue-text">${s.explanation}</div></div>`; });
     html += '</div>';
   }
-  d.innerHTML = html; d.classList.add('active');
+  d.innerHTML = html; openDetails();
 }
 
 function showTroubleshootingDetails(idx) {
@@ -807,7 +815,7 @@ function showTroubleshootingDetails(idx) {
       ${item.steps.map(s => `<div class="solution-step"><div class="step-title">${s.title}</div><div class="step-text">${s.text}</div></div>`).join('')}
     </div>
     ${item.escalate ? '<div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600;border:1px solid #FECACA;">⬆️ Escalate to data team</div>' : '<div style="margin-top:12px;padding:10px 14px;background:#F0FDF4;border-radius:8px;font-size:12px;color:#166534;font-weight:600;border:1px solid #BBF7D0;">✅ Try to resolve — check Big 3 first</div>'}`;
-  d.classList.add('active');
+  openDetails();
 }
 
 function showGlossaryDetails(idx) {
@@ -820,10 +828,21 @@ function showGlossaryDetails(idx) {
     <div class="detail-section"><div class="detail-label">Detailed Explanation</div><div class="detail-text">${item.detailed}</div></div>
     <div class="detail-section"><div class="detail-label">Why It Matters</div><div class="detail-text">${item.whyMatters}</div></div>
     <div class="detail-section"><div class="detail-label">Example</div><div class="detail-text" style="background:#f0fdf4;padding:10px 12px;border-radius:8px;border:1px solid #bbf7d0;">💡 ${item.example}</div></div>`;
-  d.classList.add('active');
+  openDetails();
 }
 
-function closeDetails() { document.getElementById('details').classList.remove('active'); }
+function closeDetails() {
+  document.getElementById('details').classList.remove('active');
+  document.querySelector('.content').classList.remove('showing-details');
+}
+
+function openDetails() {
+  const content = document.querySelector('.content');
+  const details = document.getElementById('details');
+  content.classList.add('showing-details');
+  details.classList.add('active');
+  content.scrollTop = 0;
+}
 
 // ─── EVENT DELEGATION ──────────────────────────────────────
 // MV3 CSP blocks inline onclick handlers. Every interactive element uses
@@ -872,8 +891,15 @@ document.addEventListener('click', (e) => {
       closeDetails();
       break;
     case 'viewAllIssues':
+      closeDetails();
       switchTab('troubleshoot', document.querySelectorAll('.toolbar button')[2]);
-      setTimeout(() => switchTroubleshootTab('known-issues', document.querySelectorAll('.troubleshoot-tab')[1]), 50);
+      setTimeout(() => {
+        switchTroubleshootTab('known-issues', document.querySelectorAll('.troubleshoot-tab')[1]);
+        if (key) {
+          const btn = document.querySelector(`.connector-pick-btn[data-key="${key}"]`);
+          if (btn) selectConnectorIssues(key, btn);
+        }
+      }, 50);
       break;
   }
 });

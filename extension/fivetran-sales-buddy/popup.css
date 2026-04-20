@@ -213,8 +213,11 @@
     .error-badge { display: inline-block; font-size: 10px; font-weight: 700; background: #fef2f2; color: #dc2626; padding: 3px 8px; border-radius: 5px; margin-top: 5px; }
 
     /* ── DETAILS PANEL ── */
-    .details { display: none; padding: 16px; background: white; border-top: 1.5px solid #F1F3F8; }
+    .details { display: none; padding: 16px; background: white; }
     .details.active { display: block; }
+    .content { position: relative; }
+    .content.showing-details > .section { display: none !important; }
+    .content.showing-details > .details { display: block; }
     .close { cursor: pointer; color: var(--ft-blue); font-weight: 600; margin-bottom: 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
     .close:hover { text-decoration: underline; }
 
