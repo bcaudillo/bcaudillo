@@ -67,7 +67,23 @@ const connectorMeta = {
   snapchat_ads:     { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/snapchat-ads' },
   asana:            { icon: 'A', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/asana' },
   servicenow:       { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/servicenow' },
-  segment:          { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/segment' }
+  segment:          { icon: 'S', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/segment' },
+  iterable:         { icon: 'I', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/iterable' },
+  recurly:          { icon: 'R', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/recurly' },
+  zuora:            { icon: 'Z', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/zuora' },
+  recharge:         { icon: 'R', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/recharge' },
+  freshsales:       { icon: 'F', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/freshsales' },
+  copper:           { icon: 'C', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/copper' },
+  gainsight:        { icon: 'G', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/gainsight' },
+  pinterest_ads:    { icon: 'P', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/pinterest-ads' },
+  criteo:           { icon: 'C', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/criteo' },
+  appsflyer:        { icon: 'A', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/appsflyer' },
+  workday:          { icon: 'W', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/workday' },
+  bamboohr:         { icon: 'B', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/bamboohr' },
+  monday:           { icon: 'M', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/monday' },
+  gitlab:           { icon: 'G', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/gitlab' },
+  twilio:           { icon: 'T', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/twilio' },
+  airtable:         { icon: 'A', iconClass: 'icon-default',           docsUrl: 'https://fivetran.com/docs/connectors/applications/airtable' }
 };
 
 async function supabaseGet(table, params = 'select=*') {
