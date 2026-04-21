@@ -514,9 +514,8 @@ function handleErrorResults(response) {
 
   r.innerHTML += response.errors.map(err => {
     const errLower = err.text.toLowerCase();
-    const errWords = errLower.split(/\s+/).filter(w => w.length > 3);
 
-    // 1. Try to match against generic error codes (troubleshootingData).
+    // Try to match against generic error codes (troubleshootingData).
     let matchedCode = null;
     if (typeof troubleshootingData !== 'undefined') {
       for (let i = 0; i < troubleshootingData.length; i++) {
@@ -531,58 +530,6 @@ function handleErrorResults(response) {
       }
     }
 
-    // 2. Try to match against per-connector known issues.
-    //    If we have a connector context (from the scanner), check that connector first.
-    //    Then also scan all connectors for keyword overlap.
-    let matchedIssue = null;
-    let matchedConnectorKey = null;
-
-    function scoreIssue(issue) {
-      const fields = [
-        issue.title || '',
-        issue.preview || '',
-        issue.rootCause || '',
-        issue.resolution || ''
-      ].join(' ').toLowerCase();
-      let score = 0;
-      for (const w of errWords) {
-        if (fields.includes(w)) score++;
-      }
-      return score;
-    }
-
-    // Check the context connector first (highest confidence).
-    if (err.context) {
-      const ctxKey = mapSourceTypeToKey(err.context);
-      if (ctxKey && connectorData[ctxKey] && connectorData[ctxKey].knownIssues) {
-        let bestScore = 0;
-        for (const issue of connectorData[ctxKey].knownIssues) {
-          const s = scoreIssue(issue);
-          if (s > bestScore && s >= 2) {
-            bestScore = s;
-            matchedIssue = issue;
-            matchedConnectorKey = ctxKey;
-          }
-        }
-      }
-    }
-
-    // If no context match, scan all connectors for a relevant known issue.
-    if (!matchedIssue) {
-      let bestScore = 0;
-      for (const [key, data] of Object.entries(connectorData)) {
-        if (!data.knownIssues) continue;
-        for (const issue of data.knownIssues) {
-          const s = scoreIssue(issue);
-          if (s > bestScore && s >= 3) {
-            bestScore = s;
-            matchedIssue = issue;
-            matchedConnectorKey = key;
-          }
-        }
-      }
-    }
-
     // Render the error card.
     const contextTag = err.context
       ? `<span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 6px;border-radius:3px;">${err.context}</span>`
@@ -590,20 +537,9 @@ function handleErrorResults(response) {
 
     let matchLines = '';
 
-    // Show connector known-issue match (highest value for the AE).
-    if (matchedIssue) {
-      const cName = connectorData[matchedConnectorKey]?.name || matchedConnectorKey;
-      matchLines += `<div style="margin-top:6px;padding:8px 10px;background:#F0F4FF;border:1px solid #C7D7FE;border-radius:6px;font-size:11px;">
-        <div style="font-weight:700;color:var(--ft-text-dark);margin-bottom:4px;">${cName}: ${matchedIssue.title}</div>
-        ${matchedIssue.rootCause ? `<div style="color:var(--ft-text-mid);margin-bottom:3px;"><strong>Root cause:</strong> ${matchedIssue.rootCause.substring(0, 200)}</div>` : ''}
-        ${matchedIssue.impact ? `<div style="color:var(--ft-text-mid);margin-bottom:3px;"><strong>Impact:</strong> ${matchedIssue.impact.substring(0, 200)}</div>` : ''}
-        ${matchedIssue.resolution ? `<div style="color:#16a34a;"><strong>Fix:</strong> ${matchedIssue.resolution.substring(0, 200)}</div>` : ''}
-      </div>`;
-    }
-
-    // Show generic error-code match as secondary.
+    // Show HTTP error-code match (generic troubleshooting guidance).
     if (matchedCode) {
-      matchLines += `<div style="margin-top:4px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
+      matchLines += `<div style="margin-top:6px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
         <strong>${matchedCode.errorCode} – ${matchedCode.title}</strong> <span style="color:var(--ft-blue);">View fix →</span>
       </div>`;
     }
