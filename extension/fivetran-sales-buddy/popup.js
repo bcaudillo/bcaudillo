@@ -456,103 +456,57 @@ function handleScanResults(response) {
   }
 }
 
-// ─── ERROR SCAN ──────────────────────────────────────
-function scanErrors() {
-  const r = document.getElementById('scan-results');
-  const btns = document.querySelectorAll('.scan-button');
-  btns.forEach(b => { b.disabled = true; });
+// ─── ERROR ANALYSIS (paste-based) ──────────────────────────────────────
+function analyzeError() {
+  const input = document.getElementById('error-paste-input');
+  const text = (input?.value || '').trim();
+  const r = document.getElementById('error-analysis-results');
 
-  if (typeof chrome !== 'undefined' && chrome.tabs) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-
-      if (!tab.url || !tab.url.includes('fivetran.com')) {
-        r.innerHTML = `<div style="text-align:center;padding:20px;color:var(--ft-text-light);">
-          <div style="font-size:28px;margin-bottom:8px;">🌐</div>
-          <p style="font-size:13px;">Navigate to <strong>fivetran.com</strong> to scan for errors</p>
-        </div>`;
-        btns.forEach(b => { b.disabled = false; });
-        return;
-      }
-
-      chrome.tabs.sendMessage(tab.id, { action: 'scanErrors' }, (response) => {
-        if (chrome.runtime.lastError || !response) {
-          r.innerHTML = `<div style="text-align:center;padding:20px;color:var(--ft-text-light);">
-            <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
-            <p style="font-size:13px;">Could not scan for errors. Try refreshing the page.</p>
-          </div>`;
-          btns.forEach(b => { b.disabled = false; });
-          return;
-        }
-        handleErrorResults(response);
-        btns.forEach(b => { b.disabled = false; });
-      });
-    });
-  } else {
-    setTimeout(() => {
-      handleErrorResults({ page: 'error-scan', count: 0, errors: [] });
-      btns.forEach(b => { b.disabled = false; });
-    }, 400);
+  if (!text) {
+    r.innerHTML = `<p style="color:var(--ft-text-light);font-size:12px;">Paste an error message above to get troubleshooting guidance.</p>`;
+    return;
   }
-}
 
-function handleErrorResults(response) {
-  const r = document.getElementById('scan-results');
+  const errLower = text.toLowerCase();
 
-  if (!response.errors || response.errors.length === 0) {
-    r.innerHTML = `<div class="scan-status" style="background:#F0FDF4;border-color:#86EFAC;">
-      <div class="check" style="background:#22c55e;">✓</div>
-      <span>No errors detected on this page</span>
+  // Match against HTTP error codes in troubleshootingData.
+  const matchedCodes = [];
+  for (let i = 0; i < troubleshootingData.length; i++) {
+    const ts = troubleshootingData[i];
+    const code = (ts.errorCode || '').toString();
+    if (code && errLower.includes(code)) {
+      matchedCodes.push({ idx: i, ...ts });
+    }
+  }
+
+  // Also match by title keywords (e.g. "unauthorized", "forbidden", "rate limit").
+  if (matchedCodes.length === 0) {
+    for (let i = 0; i < troubleshootingData.length; i++) {
+      const ts = troubleshootingData[i];
+      const keywords = (ts.title || '').toLowerCase().split(/[\s–-]+/).filter(w => w.length > 4);
+      if (keywords.some(w => errLower.includes(w))) {
+        matchedCodes.push({ idx: i, ...ts });
+      }
+    }
+  }
+
+  if (matchedCodes.length === 0) {
+    r.innerHTML = `<div style="padding:12px;background:#F9FAFB;border:1px solid var(--ft-border);border-radius:8px;font-size:12px;">
+      <div style="font-weight:700;color:var(--ft-text-dark);margin-bottom:6px;">No matching error codes found</div>
+      <div style="color:var(--ft-text-mid);">Try checking the <strong>Known Issues</strong> tab for connector-specific problems, or browse the error codes below.</div>
     </div>`;
     return;
   }
 
-  r.innerHTML = `<div class="scan-status" style="background:#FEF2F2;border-color:#FCA5A5;">
-    <div class="check" style="background:#ef4444;">!</div>
-    <span>Found <strong>${response.errors.length} error${response.errors.length === 1 ? '' : 's'}</strong></span>
-  </div>`;
-
-  r.innerHTML += response.errors.map(err => {
-    const errLower = err.text.toLowerCase();
-
-    // Try to match against generic error codes (troubleshootingData).
-    let matchedCode = null;
-    if (typeof troubleshootingData !== 'undefined') {
-      for (let i = 0; i < troubleshootingData.length; i++) {
-        const ts = troubleshootingData[i];
-        const code = (ts.errorCode || '').toString();
-        const title = (ts.title || '').toLowerCase();
-        if ((code && errLower.includes(code)) ||
-            title.split(/\s+/).some(w => w.length > 3 && errLower.includes(w))) {
-          matchedCode = { idx: i, ...ts };
-          break;
-        }
-      }
-    }
-
-    // Render the error card.
-    const contextTag = err.context
-      ? `<span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:#E8EEFC;padding:2px 6px;border-radius:3px;">${err.context}</span>`
-      : '';
-
-    let matchLines = '';
-
-    // Show HTTP error-code match (generic troubleshooting guidance).
-    if (matchedCode) {
-      matchLines += `<div style="margin-top:6px;padding:6px 8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:4px;font-size:11px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${matchedCode.idx}">
-        <strong>${matchedCode.errorCode} – ${matchedCode.title}</strong> <span style="color:var(--ft-blue);">View fix →</span>
-      </div>`;
-    }
-
-    return `<div style="padding:10px 12px;border-bottom:1px solid #F1F3F8;">
-      <div style="display:flex;align-items:center;gap:4px;">
-        <span style="color:#ef4444;font-weight:700;font-size:12px;">●</span>
-        <span style="font-size:12px;color:var(--ft-text-dark);word-break:break-word;">${err.text.substring(0, 300)}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">${contextTag}</div>
-      ${matchLines}
-    </div>`;
-  }).join('');
+  r.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Matched ${matchedCodes.length} error code${matchedCodes.length === 1 ? '' : 's'}</div>`;
+  r.innerHTML += matchedCodes.map(mc => `<div style="padding:10px 12px;margin-bottom:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${mc.idx}">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <span style="font-size:14px;font-weight:800;color:#92400e;">${mc.errorCode}</span>
+      <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${mc.title}</span>
+    </div>
+    <div style="font-size:11px;color:var(--ft-text-mid);">${mc.diagnosis?.substring(0, 150) || mc.preview}...</div>
+    <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View full troubleshooting guide →</div>
+  </div>`).join('');
 }
 
 // ─── ERROR CODES ──────────────────────────────────────
@@ -651,13 +605,8 @@ document.getElementById('search-input')?.addEventListener('input', (e) => {
       </div>`).join('');
 });
 
-document.getElementById('troubleshoot-input')?.addEventListener('input', (e) => {
-  const q = e.target.value.toLowerCase();
-  const r = document.getElementById('troubleshoot-results');
-  if (!q) { r.innerHTML = ''; return; }
-  const m = troubleshootingData.filter(i => i.errorCode.includes(q) || i.title.toLowerCase().includes(q) || i.preview.toLowerCase().includes(q));
-  r.innerHTML = m.length === 0 ? '<p style="color:var(--ft-text-light);font-size:13px;">No matching errors</p>'
-    : m.map(item => { const idx = troubleshootingData.indexOf(item); return `<div class="troubleshooting-item" data-action="showTroubleshootingDetails" data-idx="${idx}"><div class="troubleshooting-title">${item.title}</div><div class="troubleshooting-preview">${item.preview}</div><div class="error-badge">${item.errorCode}</div></div>`; }).join('');
+document.getElementById('error-paste-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); analyzeError(); }
 });
 
 document.getElementById('glossary-input')?.addEventListener('input', (e) => {
@@ -802,8 +751,8 @@ document.addEventListener('click', (e) => {
     case 'scanDashboard':
       scanDashboard();
       break;
-    case 'scanErrors':
-      scanErrors();
+    case 'analyzeError':
+      analyzeError();
       break;
     case 'showConnectorDetails':
       showConnectorDetails(key);

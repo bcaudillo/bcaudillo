@@ -341,109 +341,6 @@
     return null;
   }
 
-  // ─── ERROR SCANNER ──────────────────────────────────────────
-  // Scans the visible page for error messages, status warnings, and failure
-  // indicators. Returns deduplicated error strings.
-  function scanForErrors() {
-    const errors = [];
-    const seen = new Set();
-
-    function addError(text, source, context) {
-      const key = text.toLowerCase().trim();
-      if (!key || key.length < 5 || seen.has(key)) return;
-      seen.add(key);
-      errors.push({ text: text.trim(), source, context: context || '' });
-    }
-
-    // 1. Red/error-colored text: elements with inline style color red or
-    //    computed color in the red spectrum.
-    const allEls = document.querySelectorAll('span, div, p, td, li');
-    for (const el of allEls) {
-      // Skip huge containers — only leaf-ish elements.
-      if (el.children.length > 3) continue;
-      const text = el.textContent.trim();
-      if (!text || text.length > 500 || text.length < 5) continue;
-
-      const style = window.getComputedStyle(el);
-      const color = style.color;
-      // Detect red-ish text (rgb where R > 180, G < 100, B < 100)
-      const rgb = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-      if (rgb) {
-        const r = parseInt(rgb[1]), g = parseInt(rgb[2]), b = parseInt(rgb[3]);
-        if (r > 180 && g < 100 && b < 100) {
-          addError(text, 'red-text', '');
-        }
-      }
-    }
-
-    // 2. Known error/warning keywords in visible text.
-    const ERROR_PATTERNS = [
-      /\b(error|failed|failure|denied|refused|rejected|unauthorized|forbidden)\b/i,
-      /\b(timeout|timed?\s*out|connection\s*lost|unreachable)\b/i,
-      /\b(rate\s*limit|throttl|quota\s*exceeded|too\s*many\s*requests)\b/i,
-      /\b(invalid|expired|revoked|disabled)\s+(token|credential|key|certificate|password|api\s*key)/i,
-      /\b(insufficient\s*permissions?|access\s*denied|not\s*authorized)\b/i,
-      /\bHTTP\s*(4\d\d|5\d\d)\b/i,
-      /\b(broken|sync\s*failed|re-?auth|reconnect)\b/i,
-      /\b(schema\s*change|column\s*mismatch|type\s*mismatch)\b/i
-    ];
-
-    // Scan elements that could hold status or error messages.
-    const candidates = document.querySelectorAll(
-      'span, div, p, [role="alert"], [role="status"], [class*="error"], [class*="alert"], [class*="warning"], [class*="fail"], [class*="broken"]'
-    );
-    for (const el of candidates) {
-      if (el.children.length > 5) continue;
-      const text = el.textContent.trim();
-      if (!text || text.length > 500 || text.length < 8) continue;
-
-      for (const pattern of ERROR_PATTERNS) {
-        if (pattern.test(text)) {
-          // Try to find a nearby connector name for context.
-          let context = '';
-          let parent = el.parentElement;
-          for (let i = 0; i < 5 && parent; i++) {
-            const stSpan = parent.querySelector('span.ndnOq');
-            if (stSpan && !stSpan.closest('a')) {
-              context = stSpan.textContent.trim();
-              break;
-            }
-            parent = parent.parentElement;
-          }
-          addError(text, 'keyword-match', context);
-          break;
-        }
-      }
-    }
-
-    // 3. Look for "Broken" or "Delayed" status badges on the connections list.
-    const statusSpans = document.querySelectorAll('span, div');
-    for (const el of statusSpans) {
-      const t = el.textContent.trim();
-      if (t === 'Broken' || t === 'Delayed') {
-        let context = '';
-        let parent = el.parentElement;
-        for (let i = 0; i < 6 && parent; i++) {
-          const nameLink = parent.querySelector('a[href*="/dashboard/connections/"]');
-          if (nameLink) {
-            context = nameLink.textContent.trim();
-            break;
-          }
-          parent = parent.parentElement;
-        }
-        addError(`Connector status: ${t}`, 'status-badge', context);
-      }
-    }
-
-    return {
-      page: 'error-scan',
-      count: errors.length,
-      errors,
-      timestamp: new Date().toISOString(),
-      url: window.location.href
-    };
-  }
-
   // ─── MAIN SCAN FUNCTION ──────────────────────────────────────
   function scan() {
     const page = detectPage();
@@ -484,22 +381,10 @@
         });
       }
     }
-    if (request.action === 'scanErrors') {
-      try {
-        const result = scanForErrors();
-        sendResponse(result);
-      } catch (error) {
-        sendResponse({
-          page: 'error',
-          message: `Error scan failed: ${error.message}`,
-          url: window.location.href
-        });
-      }
-    }
     return true; // Keep message channel open for async response
   });
 
   // Also expose scan function globally for debugging
-  window.__fivetranScanner = { scan, scanForErrors, detectPage };
+  window.__fivetranScanner = { scan, detectPage };
 
 })();

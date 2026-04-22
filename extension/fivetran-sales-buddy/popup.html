@@ -42,14 +42,11 @@
 
       <div class="content">
         <div id="scan" class="section active">
-          <div style="display:flex;gap:8px;">
-            <button class="scan-button" data-action="scanDashboard" style="flex:1;">⚡ Scan Connectors</button>
-            <button class="scan-button" data-action="scanErrors" style="flex:1;">🚨 Scan Errors</button>
-          </div>
+          <button class="scan-button" data-action="scanDashboard">⚡ Scan Fivetran Dashboard</button>
           <div id="scan-results">
             <div class="empty-state">
               <div class="icon">📡</div>
-              <p>Scan a Fivetran dashboard to detect<br/>active connectors and errors</p>
+              <p>Scan a Fivetran dashboard to detect<br/>active connectors</p>
             </div>
           </div>
         </div>
@@ -72,11 +69,15 @@
             <button class="troubleshoot-tab" data-action="switchTroubleshootTab" data-ts-tab="known-issues">Known Issues</button>
           </div>
           <div id="errors-tab" style="display: block;">
-            <div class="error-code-grid" id="error-codes"></div>
-            <div class="search-bar" style="padding: 0 0 10px 0;">
-              <input type="text" id="troubleshoot-input" placeholder="Search errors (e.g., 403, timeout)..." />
+            <div style="padding:0 0 10px 0;">
+              <textarea id="error-paste-input" rows="3" placeholder="Paste an error message from Fivetran..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--ft-border);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;background:var(--ft-bg);color:var(--ft-text-dark);"></textarea>
+              <button class="scan-button" data-action="analyzeError" style="margin-top:6px;">Analyze Error</button>
             </div>
-            <div id="troubleshoot-results"></div>
+            <div id="error-analysis-results"></div>
+            <div style="margin-top:12px;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Common Error Codes</div>
+              <div class="error-code-grid" id="error-codes"></div>
+            </div>
           </div>
           <div id="known-issues-tab" style="display: none;">
             <div class="search-bar" style="padding: 0 0 10px 0;">
