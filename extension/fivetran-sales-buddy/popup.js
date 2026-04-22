@@ -457,9 +457,18 @@ function handleScanResults(response) {
 }
 
 // ─── ERROR ANALYSIS (paste-based) ──────────────────────────────────────
+function populateConnectorSelect() {
+  const sel = document.getElementById('error-connector-select');
+  if (!sel) return;
+  const sorted = Object.entries(connectorData).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  sel.innerHTML = `<option value="">Select a connector (optional)</option>`
+    + sorted.map(([key, c]) => `<option value="${key}">${c.name}</option>`).join('');
+}
+
 function analyzeError() {
   const input = document.getElementById('error-paste-input');
   const text = (input?.value || '').trim();
+  const selectedKey = document.getElementById('error-connector-select')?.value || '';
   const r = document.getElementById('error-analysis-results');
 
   if (!text) {
@@ -468,8 +477,9 @@ function analyzeError() {
   }
 
   const errLower = text.toLowerCase();
+  let html = '';
 
-  // Match against HTTP error codes in troubleshootingData.
+  // 1. Match against HTTP error codes in troubleshootingData.
   const matchedCodes = [];
   for (let i = 0; i < troubleshootingData.length; i++) {
     const ts = troubleshootingData[i];
@@ -479,7 +489,6 @@ function analyzeError() {
     }
   }
 
-  // Also match by title keywords (e.g. "unauthorized", "forbidden", "rate limit").
   if (matchedCodes.length === 0) {
     for (let i = 0; i < troubleshootingData.length; i++) {
       const ts = troubleshootingData[i];
@@ -490,23 +499,47 @@ function analyzeError() {
     }
   }
 
-  if (matchedCodes.length === 0) {
-    r.innerHTML = `<div style="padding:12px;background:#F9FAFB;border:1px solid var(--ft-border);border-radius:8px;font-size:12px;">
-      <div style="font-weight:700;color:var(--ft-text-dark);margin-bottom:6px;">No matching error codes found</div>
-      <div style="color:var(--ft-text-mid);">Try checking the <strong>Known Issues</strong> tab for connector-specific problems, or browse the error codes below.</div>
-    </div>`;
-    return;
+  if (matchedCodes.length > 0) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Error Code Match</div>`;
+    html += matchedCodes.map(mc => `<div style="padding:10px 12px;margin-bottom:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${mc.idx}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-size:14px;font-weight:800;color:#92400e;">${mc.errorCode}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${mc.title}</span>
+      </div>
+      <div style="font-size:11px;color:var(--ft-text-mid);">${mc.diagnosis?.substring(0, 150) || mc.preview}...</div>
+      <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View full troubleshooting guide →</div>
+    </div>`).join('');
   }
 
-  r.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Matched ${matchedCodes.length} error code${matchedCodes.length === 1 ? '' : 's'}</div>`;
-  r.innerHTML += matchedCodes.map(mc => `<div style="padding:10px 12px;margin-bottom:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${mc.idx}">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-      <span style="font-size:14px;font-weight:800;color:#92400e;">${mc.errorCode}</span>
-      <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${mc.title}</span>
-    </div>
-    <div style="font-size:11px;color:var(--ft-text-mid);">${mc.diagnosis?.substring(0, 150) || mc.preview}...</div>
-    <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View full troubleshooting guide →</div>
-  </div>`).join('');
+  // 2. If a connector is selected, search its known issues for keyword matches.
+  if (selectedKey && connectorData[selectedKey]?.knownIssues) {
+    const c = connectorData[selectedKey];
+    const errWords = errLower.split(/\s+/).filter(w => w.length > 3);
+    const scored = c.knownIssues.map((issue, idx) => {
+      const fields = [issue.title, issue.preview, issue.rootCause, issue.resolution].join(' ').toLowerCase();
+      let score = 0;
+      for (const w of errWords) { if (fields.includes(w)) score++; }
+      return { issue, idx, score };
+    }).filter(s => s.score >= 2).sort((a, b) => b.score - a.score);
+
+    if (scored.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin:12px 0 8px;">${c.name} Known Issues</div>`;
+      html += scored.map(({ issue, idx }) => `<div style="padding:10px 12px;margin-bottom:8px;background:#F0F4FF;border:1px solid #C7D7FE;border-radius:8px;cursor:pointer;" data-action="showKnownIssueDetails" data-key="${selectedKey}" data-idx="${idx}">
+        <div style="font-weight:700;font-size:12px;color:var(--ft-text-dark);margin-bottom:4px;">${issue.title}</div>
+        <div style="font-size:11px;color:var(--ft-text-mid);">${issue.preview}</div>
+        <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View details →</div>
+      </div>`).join('');
+    }
+  }
+
+  if (!html) {
+    html = `<div style="padding:12px;background:#F9FAFB;border:1px solid var(--ft-border);border-radius:8px;font-size:12px;">
+      <div style="font-weight:700;color:var(--ft-text-dark);margin-bottom:6px;">No matches found</div>
+      <div style="color:var(--ft-text-mid);">Try selecting a connector above, or browse the error codes and <strong>Known Issues</strong> tab.</div>
+    </div>`;
+  }
+
+  r.innerHTML = html;
 }
 
 // ─── ERROR CODES ──────────────────────────────────────
@@ -799,6 +832,7 @@ document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
 });
 
 loadErrorCodes();
+populateConnectorSelect();
 
 // ─── STATUS BAR HELPERS ──────────────────────────────────────
 function setStatus(state, text, count) {
@@ -849,6 +883,7 @@ function setStatus(state, text, count) {
     const totalIssues = Object.values(connectorData).reduce((sum, c) => sum + (c.knownIssues || []).length, 0);
     console.log(`Merged ${supaCount} Supabase connectors (${mergedFromSupa} used) with ${total} total.`);
     setStatus('ok', `Supabase synced — ${supaCount} from DB, ${total} total`, totalIssues + ' issues');
+    populateConnectorSelect();
 
     if (document.getElementById('known-issues-tab').style.display === 'block') {
       loadKnownIssuesTab();
