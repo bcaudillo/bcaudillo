@@ -70,7 +70,11 @@
           </div>
           <div id="errors-tab" style="display: block;">
             <div style="padding:0 0 10px 0;">
-              <select id="error-connector-select" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1.5px solid var(--ft-border);border-radius:8px;font-family:inherit;font-size:12px;background:var(--ft-bg);color:var(--ft-text-dark);margin-bottom:6px;"></select>
+              <div style="position:relative;">
+                <input type="text" id="error-connector-input" placeholder="Search for a connector..." autocomplete="off" style="width:100%;box-sizing:border-box;padding:8px 12px;border:1.5px solid var(--ft-border);border-radius:8px;font-family:inherit;font-size:12px;background:var(--ft-bg);color:var(--ft-text-dark);margin-bottom:6px;" />
+                <input type="hidden" id="error-connector-key" />
+                <div id="error-connector-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:180px;overflow-y:auto;background:white;border:1.5px solid var(--ft-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-top:-4px;"></div>
+              </div>
               <textarea id="error-paste-input" rows="3" placeholder="Paste an error message from Fivetran..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--ft-border);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;background:var(--ft-bg);color:var(--ft-text-dark);"></textarea>
               <button class="scan-button" data-action="analyzeError" style="margin-top:6px;">Analyze Error</button>
             </div>
