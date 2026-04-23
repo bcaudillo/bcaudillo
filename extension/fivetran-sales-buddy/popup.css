@@ -4,13 +4,13 @@
     html, body { width: 560px; }
 
     :root {
-      --ft-blue: #306BEA;
-      --ft-blue-dark: #1A4FBF;
-      --ft-blue-light: #EBF1FD;
-      --ft-blue-mid: #93B4F4;
-      --ft-navy: #0B1B36;
-      --ft-bg: #F4F6FA;
-      --ft-border: #E2E8F0;
+      --ft-blue: #E91E8C;
+      --ft-blue-dark: #C2176F;
+      --ft-blue-light: #FDE8F4;
+      --ft-blue-mid: #F494C9;
+      --ft-navy: #3B0B24;
+      --ft-bg: #FDF4F9;
+      --ft-border: #F0D4E4;
       --ft-text: #1A202C;
       --ft-text-mid: #4A5568;
       --ft-text-light: #A0AEC0;
