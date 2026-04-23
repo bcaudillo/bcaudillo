@@ -3,18 +3,14 @@
   "name": "Fivetran Connector Scout",
   "version": "0.2.0",
   "description": "Quick-reference connector intelligence for Fivetran expansion AEs",
-  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "scripting"],
   "host_permissions": [
     "https://fivetran.com/*",
     "https://*.fivetran.com/*",
     "https://hmqdocjjejwdrpkqgdbd.supabase.co/*"
   ],
-  "action": {},
-  "side_panel": {
-    "default_path": "popup.html"
-  },
-  "background": {
-    "service_worker": "background.js"
+  "action": {
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {
