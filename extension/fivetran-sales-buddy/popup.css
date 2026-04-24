@@ -219,6 +219,7 @@
     .content { position: relative; }
     .content.showing-details > .section { display: none !important; }
     .content.showing-details > .details { display: block; }
+    .content.showing-details { max-height: none; }
     .close { cursor: pointer; color: var(--ft-blue); font-weight: 600; margin-bottom: 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
     .close:hover { text-decoration: underline; }
 
