@@ -213,6 +213,10 @@
     .troubleshooting-preview { font-size: 12px; color: var(--ft-text-mid); }
     .error-badge { display: inline-block; font-size: 10px; font-weight: 700; background: #fef2f2; color: #dc2626; padding: 3px 8px; border-radius: 5px; margin-top: 5px; }
 
+    /* ── BATTLE CARDS ── */
+    .battlecard-item { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .battlecard-item:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); }
+
     /* ── DETAILS PANEL ── */
     .details { display: none; padding: 16px; background: white; }
     .details.active { display: block; }

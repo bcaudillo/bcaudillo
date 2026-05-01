@@ -246,6 +246,185 @@ const categoryConfig = {
   'Setup':          { dot: 'dot-setup', css: 'cat-setup', badgeBg: '#f5f3ff', badgeColor: '#5b21b6' },
   'Syncs':          { dot: 'dot-syncs', css: 'cat-syncs', badgeBg: '#fdf2f8', badgeColor: '#9d174d' }
 };
+// ─── BATTLE CARDS ──────────────────────────────────────
+const battleCardData = [
+  {
+    competitor: 'Airbyte',
+    type: 'Open-source ELT',
+    summary: 'Open-source data integration platform. Self-hosted (free) or Airbyte Cloud (managed). Growing fast in developer-led organizations.',
+    pricing: 'Open-source: free but you pay for infrastructure + engineering time to maintain. Cloud: usage-based per row synced (credits model).',
+    strengths: [
+      '300+ connectors, many community-built',
+      'Free self-hosted option appeals to engineering teams with budget constraints',
+      'Connector Development Kit (CDK) lets engineers build custom connectors',
+      'Strong developer community and GitHub presence'
+    ],
+    weaknesses: [
+      'Self-hosted = you own the infrastructure, monitoring, upgrades, and on-call',
+      'Connector quality varies widely — community connectors may break without warning',
+      'No SLA on open-source. Cloud SLAs are weaker than Fivetran',
+      'Limited enterprise features: no hybrid deployment, weaker RBAC, no SOC 2 Type II on self-hosted',
+      'Schema handling and error recovery less mature than Fivetran'
+    ],
+    positioning: 'Airbyte is a good engineering project, not a good business decision. The "free" self-hosted option costs 1-2 engineers to maintain — that\'s $200-400k/year in salary. Fivetran is fully managed: zero infrastructure, enterprise SLAs, and 99.9% uptime guarantee.',
+    objections: [
+      { q: '"Airbyte is free and open-source"', a: 'The software is free but running it isn\'t. Self-hosted Airbyte needs servers, monitoring, upgrades, and someone on-call when syncs break at 2am. Most teams spend 15-20 hrs/week maintaining it. At $150/hr engineering cost, that\'s $10k+/month — more than Fivetran.' },
+      { q: '"We already use Airbyte and it works fine"', a: 'It works until it doesn\'t — connector updates break syncs, schema changes aren\'t handled automatically, and there\'s no support to call. How much engineering time goes to keeping it running vs building features?' },
+      { q: '"Airbyte Cloud is managed too"', a: 'Airbyte Cloud is newer and less mature. Fivetran has 10+ years of production hardening, 700+ connectors maintained by full-time engineering teams, and enterprise features (hybrid deployment, SOC 2, HIPAA) that Airbyte Cloud doesn\'t match.' }
+    ]
+  },
+  {
+    competitor: 'Stitch (Talend/Qlik)',
+    type: 'Managed ELT',
+    summary: 'Acquired by Talend (now Qlik). Originally a simple, developer-friendly ELT tool. Has been deprioritized since the Talend acquisition — limited investment and connector updates.',
+    pricing: 'Row-based pricing. Standard plan starts around $100/month for 5M rows. Volume discounts at higher tiers.',
+    strengths: [
+      'Simple setup — historically one of the easiest tools to get started with',
+      'Low entry price point for small volumes',
+      'Singer open-source tap ecosystem'
+    ],
+    weaknesses: [
+      'Effectively end-of-life — minimal product investment since Talend/Qlik acquisition',
+      'Connector catalog is stagnant: ~130 connectors vs Fivetran\'s 700+',
+      'No hybrid deployment, limited security features',
+      'Support quality has declined significantly',
+      'No transformation layer, no dbt integration',
+      'Row-based pricing gets expensive at scale'
+    ],
+    positioning: 'Stitch was a solid tool 5 years ago. Since the Talend acquisition, it\'s been deprioritized — connector updates are rare, support is slow, and there\'s no product roadmap. Customers on Stitch are on a sinking ship. Migration to Fivetran is straightforward.',
+    objections: [
+      { q: '"Stitch is cheaper"', a: 'Stitch is cheaper at small volumes but more expensive at scale due to row-based pricing. And you get what you pay for — fewer connectors, no transformations, no hybrid deployment, and declining support.' },
+      { q: '"We\'re already on Stitch and it works"', a: 'It works today, but Stitch hasn\'t shipped a meaningful product update in years. When you need a new connector, better security, or faster support — it won\'t be there. Better to migrate now on your timeline than be forced to later.' }
+    ]
+  },
+  {
+    competitor: 'Informatica',
+    type: 'Enterprise ETL/iPaaS',
+    summary: 'The legacy giant of data integration. On-premises ETL (PowerCenter) and cloud (IICS/IDMC). Deeply embedded in Fortune 500 companies. Expensive and complex.',
+    pricing: 'Enterprise licensing — typically $200k-$1M+/year depending on volume and modules. IPU (Informatica Processing Unit) based pricing on cloud. Complex, opaque pricing.',
+    strengths: [
+      'Deeply embedded in large enterprises — hard to rip out',
+      'Broad platform: ETL, MDM, data quality, data governance, API management',
+      'Mature enterprise features: SOC 2, HIPAA, FedRAMP',
+      'Large partner and consultant ecosystem',
+      'Handles complex transformations that pure ELT tools don\'t'
+    ],
+    weaknesses: [
+      'Extremely expensive — 5-10x Fivetran cost for equivalent data movement',
+      'Requires specialized Informatica developers ($150-200k/year each)',
+      'Slow to set up new connectors — weeks vs minutes with Fivetran',
+      'ETL approach = data is transformed before loading, losing raw data',
+      'Cloud product (IDMC) is still catching up to cloud-native tools',
+      'Vendor lock-in: proprietary mappings and workflows'
+    ],
+    positioning: 'Informatica is a powerful platform but it\'s a 2005 solution to a 2025 problem. Fivetran replaces the data movement piece — the E and L — at a fraction of the cost, in minutes instead of weeks, with zero infrastructure. Customers keep Informatica for data quality/MDM if needed, but move data integration to Fivetran.',
+    objections: [
+      { q: '"We have a whole Informatica team — we can\'t just switch"', a: 'You don\'t have to switch overnight. Start by running Fivetran alongside Informatica for new connectors. Your Informatica team can focus on complex transformations and data quality instead of maintaining basic data pipelines.' },
+      { q: '"Informatica handles our complex transformations"', a: 'Fivetran handles the E and L. Use dbt for the T. For truly complex transformations, keep Informatica for those specific workflows. Most data movement doesn\'t need Informatica\'s complexity — it\'s like using a semi-truck to deliver a pizza.' },
+      { q: '"Our compliance team requires Informatica"', a: 'Fivetran is SOC 2 Type II, HIPAA, and GDPR compliant. Our Hybrid Deployment option keeps data in your network. We meet the same compliance requirements at a fraction of the cost.' }
+    ]
+  },
+  {
+    competitor: 'Matillion',
+    type: 'Cloud-native ELT',
+    summary: 'Cloud-native data integration and transformation platform. Runs inside the customer\'s cloud warehouse (Snowflake, BigQuery, Redshift). Combines extraction and transformation in one tool.',
+    pricing: 'Credit-based pricing. Virtual Edition (self-hosted in your cloud) or SaaS. Pricing varies significantly by deployment model and volume.',
+    strengths: [
+      'Transformation built in — don\'t need a separate dbt layer',
+      'Runs inside your warehouse — no data leaves your environment',
+      'Good for teams that want one tool for E, L, and T',
+      'Strong Snowflake partnership'
+    ],
+    weaknesses: [
+      'Fewer connectors than Fivetran (~100 vs 700+)',
+      'Transformation UI can be complex — not as clean as dbt',
+      'Running in your warehouse means you pay warehouse compute costs for extraction',
+      'Less mature connector maintenance — updates are slower',
+      'Customer owns more of the operational burden'
+    ],
+    positioning: 'Matillion tries to be everything — extract, load, and transform in one tool. Fivetran is best-of-breed for the E and L, and pairs with dbt for the T. Specialization wins: Fivetran has 7x more connectors and dedicated connector engineering teams.',
+    objections: [
+      { q: '"Matillion does ETL and transformations in one tool"', a: 'All-in-one sounds appealing but means compromises everywhere. Fivetran + dbt gives you best-of-breed at each step. And with 700+ connectors vs Matillion\'s ~100, you won\'t hit a wall when you need a new source.' },
+      { q: '"Matillion runs in our Snowflake — data never leaves"', a: 'Fivetran\'s Hybrid Deployment does the same thing — data stays in your network. Plus you get Fivetran\'s fully managed connectors without paying Snowflake compute costs for extraction.' }
+    ]
+  },
+  {
+    competitor: 'Hevo Data',
+    type: 'Managed ELT',
+    summary: 'Managed ELT platform popular in mid-market and APAC. Positioned as a simpler, cheaper alternative to Fivetran. Growing but smaller scale.',
+    pricing: 'Event-based pricing. Free tier: 1M events/month. Starter ~$239/month. Pricing generally lower than Fivetran for small-medium volumes.',
+    strengths: [
+      'Lower price point — attractive for cost-sensitive mid-market',
+      'Simple UI and fast setup',
+      'Built-in transformations (Python and drag-and-drop)',
+      'Good APAC presence and support'
+    ],
+    weaknesses: [
+      'Fewer connectors (~150 vs Fivetran 700+)',
+      'Less mature enterprise features — weaker RBAC, no hybrid deployment',
+      'Smaller engineering team = slower connector updates and bug fixes',
+      'Less battle-tested at enterprise scale',
+      'Event-based pricing can be unpredictable for high-volume sources'
+    ],
+    positioning: 'Hevo is a good product for small teams with simple needs. But as data volume and complexity grow, customers hit limitations — fewer connectors, weaker enterprise features, and a smaller support team. Fivetran scales from startup to Fortune 500.',
+    objections: [
+      { q: '"Hevo is cheaper"', a: 'Hevo is cheaper at the entry level. But event-based pricing gets expensive at scale, and you\'ll pay more in engineering time working around connector gaps and limitations. Total cost of ownership favors Fivetran as you grow.' },
+      { q: '"We don\'t need 700 connectors"', a: 'You don\'t today. But every customer\'s source count grows over time. With Fivetran, the connector is ready when you need it. With Hevo, you may be waiting or building a workaround.' }
+    ]
+  },
+  {
+    competitor: 'Custom Scripts / DIY',
+    type: 'In-house pipelines',
+    summary: 'Engineering team builds and maintains custom data pipelines using Python scripts, Airflow DAGs, AWS Glue, cron jobs, or similar. The most common "competitor" — especially in engineering-led organizations.',
+    pricing: 'Free software, expensive people. 1-2 engineers spending 30-50% of their time maintaining pipelines = $100-200k/year in loaded cost. Plus infrastructure costs.',
+    strengths: [
+      'Full control over every aspect of the pipeline',
+      'No vendor dependency — own the code',
+      'Can handle truly custom or niche data sources',
+      'No licensing cost (just people and infrastructure)'
+    ],
+    weaknesses: [
+      'Expensive: engineering time is the most costly resource in any company',
+      'Fragile: custom scripts break when APIs change, schemas drift, or tokens expire',
+      'No monitoring, alerting, or error recovery unless you build it yourself',
+      'Key-person risk: if the engineer who built it leaves, nobody can maintain it',
+      'Doesn\'t scale: 3 sources = manageable, 30 sources = a full-time job',
+      'Opportunity cost: engineers maintaining pipelines aren\'t building product'
+    ],
+    positioning: 'DIY pipelines are technical debt disguised as a cost saving. Every hour an engineer spends fixing a broken API script is an hour not spent building product. Fivetran costs a fraction of one engineer\'s salary and handles 700+ sources with zero maintenance.',
+    objections: [
+      { q: '"We already built it — switching has a migration cost"', a: 'The migration cost is a one-time investment. The ongoing cost of maintaining custom pipelines is forever. How many hours per week does your team spend on pipeline maintenance right now? Multiply that by $150/hr.' },
+      { q: '"Our engineers can build anything Fivetran does"', a: 'They can — but should they? Fivetran has 500+ engineers maintaining connectors full-time. When Salesforce changes their API, we update the connector in hours. Your team would spend days debugging. Let engineers build features, not plumbing.' },
+      { q: '"We only have 3 data sources — it\'s simple"', a: 'It\'s simple today. Every company\'s source count grows. And even 3 sources need monitoring, error handling, schema change detection, and on-call coverage. That\'s not simple — it\'s invisible work that scales poorly.' }
+    ]
+  },
+  {
+    competitor: 'Talend',
+    type: 'Enterprise ETL/ELT',
+    summary: 'Open-source ETL tool (Talend Open Studio) with a commercial enterprise version. Acquired by Qlik in 2023. Java-based, code-heavy approach to data integration.',
+    pricing: 'Open Studio: free. Talend Cloud: enterprise pricing, typically $50-200k+/year. Qlik acquisition has changed pricing structures.',
+    strengths: [
+      'Free open-source version for basic use',
+      'Handles complex transformations with Java/code-based approach',
+      'Broad integration capabilities beyond just data movement',
+      'Part of Qlik ecosystem — bundled with analytics'
+    ],
+    weaknesses: [
+      'Java-based — requires developer skills to build and maintain jobs',
+      'Open-source version has no support, no monitoring, no scheduling',
+      'Enterprise version is expensive and complex to deploy',
+      'Product direction uncertain after Qlik acquisition (also owns Stitch)',
+      'Slower setup than modern ELT tools — building a Talend job takes hours vs minutes in Fivetran',
+      'ETL approach loses raw data'
+    ],
+    positioning: 'Talend is a powerful tool in the hands of a skilled developer. But most companies don\'t need that power for data movement — they need reliability, speed, and zero maintenance. Fivetran replaces weeks of Talend job development with minutes of connector setup.',
+    objections: [
+      { q: '"Talend is free and we already know it"', a: 'Talend Open Studio is free software with expensive operations. Every connector is a custom Java job that someone has to build, test, deploy, monitor, and maintain. Fivetran gives you a production-ready connector in 5 minutes.' },
+      { q: '"Talend handles our complex ETL workflows"', a: 'Keep Talend for the truly complex workflows that need custom code. Move the standard data extraction to Fivetran — your Talend developers can focus on the hard problems instead of maintaining basic API pulls.' }
+    ]
+  }
+];
+
 function getCatCSS(cat) { return categoryConfig[cat]?.css || ''; }
 function getCatDot(cat) { return categoryConfig[cat]?.dot || 'dot-data-integrity'; }
 function getCatBadge(cat) { const c = categoryConfig[cat] || categoryConfig['Data Integrity']; return `background:${c.badgeBg};color:${c.badgeColor}`; }
@@ -262,6 +441,9 @@ function switchTab(tab, btn) {
     if (scannedConnectors.length > 0) {
       switchTroubleshootTab('known-issues', document.querySelectorAll('.troubleshoot-tab')[1]);
     }
+  }
+  if (tab === 'battlecards') {
+    loadBattleCards();
   }
 }
 
@@ -629,6 +811,64 @@ function loadErrorCodes() {
   `).join('');
 }
 
+// ─── BATTLE CARDS ──────────────────────────────────────
+function loadBattleCards() {
+  const list = document.getElementById('battlecard-list');
+  if (!list) return;
+  list.innerHTML = battleCardData.map((card, idx) => `
+    <div class="battlecard-item" data-action="showBattleCardDetails" data-idx="${idx}">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:15px;font-weight:800;color:var(--ft-text);">${card.competitor}</div>
+        <span style="font-size:10px;font-weight:600;color:var(--ft-text-light);background:var(--ft-bg);padding:2px 8px;border-radius:4px;">${card.type}</span>
+      </div>
+      <div style="font-size:12px;color:var(--ft-text-mid);margin-top:4px;line-height:1.5;">${card.summary}</div>
+    </div>
+  `).join('');
+}
+
+function showBattleCardDetails(idx) {
+  const card = battleCardData[idx];
+  const d = document.getElementById('details');
+  d.innerHTML = `
+    <div class="close" data-action="closeDetails">← Back</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <div class="detail-title" style="margin-bottom:0;">${card.competitor}</div>
+      <span style="font-size:11px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:3px 10px;border-radius:5px;">${card.type}</span>
+    </div>
+    <div style="font-size:12px;color:var(--ft-text-mid);margin:8px 0 16px;line-height:1.6;">${card.summary}</div>
+
+    <div class="detail-section">
+      <div class="detail-label">Their Pricing</div>
+      <div class="detail-text">${card.pricing}</div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label" style="color:#16a34a;">Their Strengths (know these)</div>
+      <div style="margin-top:6px;">${card.strengths.map(s => `<div style="font-size:12px;color:var(--ft-text-mid);padding:4px 0 4px 12px;border-left:3px solid #86efac;margin-bottom:4px;line-height:1.5;">${s}</div>`).join('')}</div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label" style="color:#dc2626;">Their Weaknesses (exploit these)</div>
+      <div style="margin-top:6px;">${card.weaknesses.map(w => `<div style="font-size:12px;color:var(--ft-text-mid);padding:4px 0 4px 12px;border-left:3px solid #fca5a5;margin-bottom:4px;line-height:1.5;">${w}</div>`).join('')}</div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label" style="color:var(--ft-blue);">How to Position Fivetran</div>
+      <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.7;padding:10px 12px;background:var(--ft-blue-light);border-radius:8px;border:1px solid var(--ft-blue-mid);margin-top:6px;">${card.positioning}</div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label">Handle Their Objections</div>
+      ${card.objections.map(obj => `
+        <div style="margin-top:8px;padding:10px 12px;background:#FAFBFE;border:1.5px solid var(--ft-border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--ft-text);margin-bottom:6px;">${obj.q}</div>
+          <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.6;">${obj.a}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  openDetails();
+}
+
 // ─── KNOWN ISSUES ──────────────────────────────────────
 function loadKnownIssuesTab() {
   const filterDiv = document.getElementById('known-issue-filter');
@@ -881,6 +1121,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'showGlossaryDetails':
       showGlossaryDetails(idx);
+      break;
+    case 'showBattleCardDetails':
+      showBattleCardDetails(idx);
       break;
     case 'closeDetails':
       closeDetails();
