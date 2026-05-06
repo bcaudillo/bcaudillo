@@ -235,6 +235,13 @@
     /* ── RECENT CHIPS ── */
     .recent-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ft-text-mid); background: #FAFBFE; border: 1.5px solid var(--ft-border); padding: 5px 10px; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
     .recent-chip:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); color: var(--ft-blue); }
+    .fav-chip { background: #FFFBEB; border-color: #FDE68A; }
+    .fav-chip:hover { background: #FEF3C7; border-color: #F59E0B; color: #92400E; }
+
+    /* ── FAVORITE STAR ── */
+    .fav-star { font-size: 20px; cursor: pointer; color: var(--ft-text-light); margin-left: auto; transition: all 0.2s; }
+    .fav-star:hover { color: #F59E0B; transform: scale(1.2); }
+    .fav-star.active { color: #F59E0B; }
 
     /* ── MAR CALCULATOR ── */
     .mar-entry { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }

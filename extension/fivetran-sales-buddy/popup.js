@@ -949,6 +949,19 @@ function selectConnectorIssues(connectorKey, btn) {
   resultsDiv.innerHTML = html;
 }
 
+// ─── FAVORITES (localStorage) ──────────────────────────────────────
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem('ft-scout-favorites') || '[]'); } catch { return []; }
+}
+function toggleFavorite(key) {
+  let favs = getFavorites();
+  if (favs.includes(key)) { favs = favs.filter(f => f !== key); }
+  else { favs.push(key); }
+  localStorage.setItem('ft-scout-favorites', JSON.stringify(favs));
+  return favs.includes(key);
+}
+function isFavorite(key) { return getFavorites().includes(key); }
+
 // ─── RECENT ITEMS (localStorage) ──────────────────────────────────────
 function getRecentItems() {
   try { return JSON.parse(localStorage.getItem('ft-scout-recent') || '[]'); } catch { return []; }
@@ -961,18 +974,39 @@ function addRecentItem(type, id, label) {
 function renderRecentItems() {
   const section = document.getElementById('recent-section');
   if (!section) return;
+  let html = '';
+
+  // Favorites
+  const favs = getFavorites();
+  if (favs.length > 0) {
+    html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:6px;">★ Favorites</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        ${favs.map(key => {
+          const c = connectorData[key];
+          if (!c) return '';
+          return `<div class="recent-chip fav-chip" data-action="showConnectorDetails" data-key="${key}">
+            <span class="connector-icon ${c.iconClass}" style="width:16px;height:16px;font-size:9px;">${c.icon}</span> ${c.name}
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // Recents
   const recents = getRecentItems();
-  if (recents.length === 0) { section.innerHTML = ''; return; }
-  section.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:6px;">Recently Viewed</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
-      ${recents.slice(0, 6).map(r => {
-        const icon = r.type === 'connector' ? '🔌' : r.type === 'glossary' ? '📚' : r.type === 'battlecard' ? '⚔️' : '📋';
-        const action = r.type === 'connector' ? `data-action="showConnectorDetails" data-key="${r.id}"` :
-                       r.type === 'glossary' ? `data-action="showGlossaryDetails" data-idx="${r.id}"` :
-                       r.type === 'battlecard' ? `data-action="showBattleCardDetails" data-idx="${r.id}"` : '';
-        return `<div class="recent-chip" ${action}>${icon} ${r.label}</div>`;
-      }).join('')}
-    </div>`;
+  if (recents.length > 0) {
+    html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:6px;">Recently Viewed</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        ${recents.slice(0, 6).map(r => {
+          const icon = r.type === 'connector' ? '🔌' : r.type === 'glossary' ? '📚' : r.type === 'battlecard' ? '⚔️' : '📋';
+          const action = r.type === 'connector' ? `data-action="showConnectorDetails" data-key="${r.id}"` :
+                         r.type === 'glossary' ? `data-action="showGlossaryDetails" data-idx="${r.id}"` :
+                         r.type === 'battlecard' ? `data-action="showBattleCardDetails" data-idx="${r.id}"` : '';
+          return `<div class="recent-chip" ${action}>${icon} ${r.label}</div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  section.innerHTML = html;
 }
 
 // ─── UNIVERSAL SEARCH ──────────────────────────────────────
@@ -1076,11 +1110,13 @@ document.getElementById('glossary-input')?.addEventListener('input', (e) => {
 function showConnectorDetails(key) {
   const c = connectorData[key]; if (!c) return; const d = document.getElementById('details');
   addRecentItem('connector', key, c.name);
+  const starred = isFavorite(key);
   d.innerHTML = `
     <div class="close" data-action="closeDetails">← Back</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <div class="connector-icon ${c.iconClass}" style="width:32px;height:32px;font-size:16px;">${c.icon}</div>
       <div class="detail-title" style="margin-bottom:0;">${c.name}</div>
+      <span class="fav-star ${starred ? 'active' : ''}" data-action="toggleFavorite" data-key="${key}">${starred ? '★' : '☆'}</span>
     </div>
     <div class="detail-section"><div class="detail-label">What it does</div><div class="detail-text">${c.whatItDoes}</div></div>
     <div class="detail-section"><div class="detail-label">Useful for</div><div class="detail-text">${c.usefulFor}</div></div>
@@ -1245,6 +1281,10 @@ document.addEventListener('click', (e) => {
     case 'copyText':
       copyToClipboard(el.dataset.text, el);
       break;
+    case 'toggleFavorite':
+      toggleFavorite(key);
+      showConnectorDetails(key);
+      break;
     case 'addMarEntry':
       addMarEntry();
       break;
@@ -1281,6 +1321,21 @@ loadErrorCodes();
 setupConnectorAutocomplete();
 renderRecentItems();
 renderQuickStats();
+
+// ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    switchTab('search', document.querySelectorAll('.toolbar button')[1]);
+    setTimeout(() => document.getElementById('search-input')?.focus(), 50);
+  }
+  if (e.key === 'Escape') {
+    const details = document.getElementById('details');
+    if (details?.classList.contains('active')) {
+      closeDetails();
+    }
+  }
+});
 
 // ─── MAR CALCULATOR ──────────────────────────────────────
 let marEntries = [{ connector: '', rows: '' }];
