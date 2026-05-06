@@ -85,11 +85,11 @@
     }
 
     /* ── TOOLBAR ── */
-    .toolbar { padding: 10px 16px; border-bottom: 1px solid var(--ft-border); display: flex; gap: 6px; background: #FAFBFE; }
+    .toolbar { padding: 8px 12px; border-bottom: 1px solid var(--ft-border); display: flex; gap: 4px; background: #FAFBFE; }
     .toolbar button {
-      padding: 7px 14px; border: 1.5px solid transparent; border-radius: 8px;
-      background: transparent; cursor: pointer; font-size: 12px; font-weight: 600;
-      color: var(--ft-text-light); white-space: nowrap; font-family: inherit; transition: all 0.2s;
+      padding: 6px 10px; border: 1.5px solid transparent; border-radius: 8px;
+      background: transparent; cursor: pointer; font-size: 11px; font-weight: 600;
+      color: var(--ft-text-light); white-space: nowrap; font-family: inherit; transition: all 0.2s; flex: 1; text-align: center;
     }
     .toolbar button:hover { color: var(--ft-blue); background: var(--ft-blue-light); }
     .toolbar button.active { background: var(--ft-blue); color: white; border-color: var(--ft-blue); box-shadow: 0 2px 8px rgba(48,107,234,0.3); }
@@ -212,6 +212,10 @@
     .troubleshooting-title { font-weight: 600; font-size: 13px; color: var(--ft-text); margin-bottom: 3px; }
     .troubleshooting-preview { font-size: 12px; color: var(--ft-text-mid); }
     .error-badge { display: inline-block; font-size: 10px; font-weight: 700; background: #fef2f2; color: #dc2626; padding: 3px 8px; border-radius: 5px; margin-top: 5px; }
+
+    /* ── COPY BUTTON ── */
+    .copy-btn { font-size: 10px; font-weight: 600; color: var(--ft-blue); cursor: pointer; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--ft-blue-mid); background: var(--ft-blue-light); transition: all 0.2s; }
+    .copy-btn:hover { background: var(--ft-blue); color: white; }
 
     /* ── BATTLE CARDS ── */
     .battlecard-item { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }

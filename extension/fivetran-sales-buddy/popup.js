@@ -855,6 +855,7 @@ function showBattleCardDetails(idx) {
     <div class="detail-section">
       <div class="detail-label" style="color:var(--ft-blue);">How to Position Fivetran</div>
       <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.7;padding:10px 12px;background:var(--ft-blue-light);border-radius:8px;border:1px solid var(--ft-blue-mid);margin-top:6px;">${card.positioning}</div>
+      <div style="margin-top:6px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${card.positioning.replace(/"/g, '&quot;')}">Copy positioning</span></div>
     </div>
 
     <div class="detail-section">
@@ -863,6 +864,7 @@ function showBattleCardDetails(idx) {
         <div style="margin-top:8px;padding:10px 12px;background:#FAFBFE;border:1.5px solid var(--ft-border);border-radius:8px;">
           <div style="font-size:12px;font-weight:700;color:var(--ft-text);margin-bottom:6px;">${obj.q}</div>
           <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.6;">${obj.a}</div>
+          <div style="margin-top:6px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${obj.a.replace(/"/g, '&quot;')}">Copy response</span></div>
         </div>
       `).join('')}
     </div>`;
@@ -1018,7 +1020,7 @@ function showKnownIssueDetails(key, idx) {
     <div class="detail-title" style="margin-top:8px;">${issue.title}</div>`;
   if (issue.rootCause) html += `<div class="detail-section"><div class="detail-label">Root Cause</div><div class="detail-text">${issue.rootCause}</div></div>`;
   if (issue.impact) html += `<div class="detail-section"><div class="detail-label">Impact</div><div class="detail-text">${issue.impact}</div></div>`;
-  if (issue.resolution) html += `<div class="detail-section"><div class="detail-label">Resolution</div><div class="detail-text">${issue.resolution}</div></div>`;
+  if (issue.resolution) html += `<div class="detail-section"><div class="detail-label">Resolution</div><div class="detail-text">${issue.resolution}</div><div style="margin-top:6px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${issue.resolution.replace(/"/g, '&quot;')}">Copy resolution</span></div></div>`;
   if (issue.subIssues?.length) {
     html += `<div class="detail-section"><div class="detail-label">Sub-Issues (${issue.subIssues.length})</div>`;
     issue.subIssues.forEach(s => { html += `<div class="sub-issue"><div class="sub-issue-title">${s.title}</div><div class="sub-issue-text">${s.explanation}</div></div>`; });
@@ -1048,6 +1050,7 @@ function showTroubleshootingDetails(idx) {
     <div class="detail-section"><div class="detail-label">Diagnosis</div><div class="detail-text">${item.diagnosis}</div></div>
     <div class="detail-section"><div class="detail-label">Action</div>
       ${item.steps.map(s => `<div class="solution-step"><div class="step-title">${s.title}</div><div class="step-text">${s.text}</div></div>`).join('')}
+      <div style="margin-top:8px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${item.steps.map(s => s.title + ': ' + s.text).join('\n\n').replace(/"/g, '&quot;')}">Copy all steps</span></div>
     </div>
     ${item.escalate ? '<div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600;border:1px solid #FECACA;">⬆️ Escalate to support team</div>' : '<div style="margin-top:12px;padding:10px 14px;background:#F0FDF4;border-radius:8px;font-size:12px;color:#166534;font-weight:600;border:1px solid #BBF7D0;">✅ Try to resolve — check Big 3 first</div>'}`;
   openDetails();
@@ -1060,7 +1063,7 @@ function showGlossaryDetails(idx) {
     <div class="detail-title">${item.term}</div>
     <div class="glossary-category" style="margin-bottom:14px;">${item.category}</div>
     <div class="detail-section"><div class="detail-label">Simple Definition</div><div class="detail-text">${item.simple}</div></div>
-    <div class="detail-section"><div class="detail-label">Detailed Explanation</div><div class="detail-text">${item.detailed}</div></div>
+    <div class="detail-section"><div class="detail-label">Detailed Explanation</div><div class="detail-text">${item.detailed}</div><div style="margin-top:6px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${item.detailed.replace(/"/g, '&quot;')}">Copy explanation</span></div></div>
     <div class="detail-section"><div class="detail-label">Why It Matters</div><div class="detail-text">${item.whyMatters}</div></div>
     <div class="detail-section"><div class="detail-label">Example</div><div class="detail-text" style="background:#f0fdf4;padding:10px 12px;border-radius:8px;border:1px solid #bbf7d0;">💡 ${item.example}</div></div>`;
   openDetails();
@@ -1077,6 +1080,16 @@ function openDetails() {
   content.classList.add('showing-details');
   details.classList.add('active');
   content.scrollTop = 0;
+}
+
+// ─── COPY TO CLIPBOARD ──────────────────────────────────────
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.color = '#16a34a';
+    setTimeout(() => { btn.textContent = original; btn.style.color = ''; }, 1500);
+  });
 }
 
 // ─── EVENT DELEGATION ──────────────────────────────────────
@@ -1124,6 +1137,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'showBattleCardDetails':
       showBattleCardDetails(idx);
+      break;
+    case 'copyText':
+      copyToClipboard(el.dataset.text, el);
       break;
     case 'closeDetails':
       closeDetails();
