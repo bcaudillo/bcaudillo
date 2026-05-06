@@ -236,6 +236,20 @@
     .recent-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ft-text-mid); background: #FAFBFE; border: 1.5px solid var(--ft-border); padding: 5px 10px; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
     .recent-chip:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); color: var(--ft-blue); }
 
+    /* ── MAR CALCULATOR ── */
+    .mar-entry { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .mar-connector-input { flex: 2; padding: 8px 10px; border: 1.5px solid var(--ft-border); border-radius: 8px; font-family: inherit; font-size: 12px; background: var(--ft-bg); color: var(--ft-text); }
+    .mar-connector-input:focus, .mar-rows-input:focus { outline: none; border-color: var(--ft-blue); background: white; }
+    .mar-rows-input { flex: 1; padding: 8px 10px; border: 1.5px solid var(--ft-border); border-radius: 8px; font-family: inherit; font-size: 12px; background: var(--ft-bg); color: var(--ft-text); }
+    .mar-remove { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--ft-text-light); cursor: pointer; border-radius: 4px; }
+    .mar-remove:hover { background: #fef2f2; color: #dc2626; }
+    .mar-add-btn { width: 100%; padding: 8px; border: 1.5px dashed var(--ft-border); border-radius: 8px; background: none; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ft-blue); font-family: inherit; transition: all 0.2s; margin-bottom: 14px; }
+    .mar-add-btn:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); }
+    .mar-summary-box { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 10px; padding: 14px; }
+    .mar-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; color: var(--ft-text-mid); border-bottom: 1px solid #F1F3F8; }
+    .mar-summary-row:last-of-type { border-bottom: none; }
+    .mar-total { font-size: 16px; font-weight: 800; color: var(--ft-blue); }
+
     /* ── DETAILS PANEL ── */
     .details { display: none; padding: 16px; background: white; }
     .details.active { display: block; }

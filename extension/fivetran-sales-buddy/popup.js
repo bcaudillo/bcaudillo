@@ -448,6 +448,9 @@ function switchTab(tab, btn) {
   if (tab === 'search') {
     renderRecentItems();
   }
+  if (tab === 'calculator') {
+    initMarCalculator();
+  }
 }
 
 function switchTroubleshootTab(tabName, btn) {
@@ -1242,6 +1245,12 @@ document.addEventListener('click', (e) => {
     case 'copyText':
       copyToClipboard(el.dataset.text, el);
       break;
+    case 'addMarEntry':
+      addMarEntry();
+      break;
+    case 'removeMarEntry':
+      removeMarEntry(idx);
+      break;
     case 'closeDetails':
       closeDetails();
       break;
@@ -1272,6 +1281,78 @@ loadErrorCodes();
 setupConnectorAutocomplete();
 renderRecentItems();
 renderQuickStats();
+
+// ─── MAR CALCULATOR ──────────────────────────────────────
+let marEntries = [{ connector: '', rows: '' }];
+
+function renderMarEntries() {
+  const el = document.getElementById('mar-entries');
+  if (!el) return;
+  el.innerHTML = marEntries.map((entry, idx) => `
+    <div class="mar-entry" data-idx="${idx}">
+      <input type="text" class="mar-connector-input" placeholder="Connector name" value="${entry.connector}" data-action-input="marConnector" data-idx="${idx}" />
+      <input type="number" class="mar-rows-input" placeholder="Rows/mo" value="${entry.rows}" data-action-input="marRows" data-idx="${idx}" />
+      ${marEntries.length > 1 ? `<span class="mar-remove" data-action="removeMarEntry" data-idx="${idx}">×</span>` : ''}
+    </div>
+  `).join('');
+  updateMarSummary();
+}
+
+function updateMarSummary() {
+  const el = document.getElementById('mar-summary');
+  if (!el) return;
+  const totalMAR = marEntries.reduce((sum, e) => sum + (parseInt(e.rows) || 0), 0);
+  const connectionCount = marEntries.filter(e => e.connector && e.rows).length;
+
+  if (totalMAR === 0) {
+    el.innerHTML = `<div class="mar-summary-box"><div style="font-size:12px;color:var(--ft-text-light);">Enter row counts to see MAR estimate</div></div>`;
+    return;
+  }
+
+  const basePerConn = 5;
+  const baseCost = connectionCount * basePerConn;
+  let tier = 'Free';
+  let estCost = '';
+  if (totalMAR <= 500000) { tier = 'Free Tier'; estCost = '$0/mo (under 500k MAR)'; }
+  else if (totalMAR <= 2000000) { tier = 'Standard'; estCost = `~$${(baseCost + Math.ceil(totalMAR / 1000) * 0.5).toLocaleString()}/mo est.`; }
+  else if (totalMAR <= 10000000) { tier = 'Enterprise'; estCost = `~$${(baseCost + Math.ceil(totalMAR / 1000) * 0.35).toLocaleString()}/mo est.`; }
+  else { tier = 'Enterprise+'; estCost = 'Custom pricing — contact sales'; }
+
+  el.innerHTML = `<div class="mar-summary-box">
+    <div class="mar-summary-row"><span>Total MAR</span><span class="mar-total">${totalMAR.toLocaleString()}</span></div>
+    <div class="mar-summary-row"><span>Connections</span><span>${connectionCount}</span></div>
+    <div class="mar-summary-row"><span>Suggested Tier</span><span style="font-weight:700;color:var(--ft-blue);">${tier}</span></div>
+    <div class="mar-summary-row"><span>Est. Cost</span><span style="font-weight:700;">${estCost}</span></div>
+    <div style="margin-top:8px;font-size:10px;color:var(--ft-text-light);line-height:1.4;">Rough estimate only. Actual pricing depends on plan, volume discounts, and contract terms. Initial historical syncs are free MAR.</div>
+  </div>`;
+}
+
+function addMarEntry() {
+  marEntries.push({ connector: '', rows: '' });
+  renderMarEntries();
+}
+
+function removeMarEntry(idx) {
+  marEntries.splice(idx, 1);
+  renderMarEntries();
+}
+
+function initMarCalculator() {
+  const container = document.getElementById('mar-entries');
+  if (!container) return;
+  renderMarEntries();
+
+  container.addEventListener('input', (e) => {
+    const idx = parseInt(e.target.dataset.idx);
+    if (isNaN(idx)) return;
+    if (e.target.classList.contains('mar-connector-input')) {
+      marEntries[idx].connector = e.target.value;
+    } else if (e.target.classList.contains('mar-rows-input')) {
+      marEntries[idx].rows = e.target.value;
+    }
+    updateMarSummary();
+  });
+}
 
 // ─── QUICK STATS ──────────────────────────────────────
 function renderQuickStats() {

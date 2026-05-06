@@ -45,6 +45,7 @@
         <button data-action="switchTab" data-tab="troubleshoot">🔧 Troubleshoot</button>
         <button data-action="switchTab" data-tab="battlecards">⚔️ Compete</button>
         <button data-action="switchTab" data-tab="glossary">📚 Glossary</button>
+        <button data-action="switchTab" data-tab="calculator">📊 MAR</button>
       </div>
 
       <div class="content">
@@ -119,6 +120,14 @@
               <p>Type a term to search the glossary</p>
             </div>
           </div>
+        </div>
+
+        <div id="calculator" class="section">
+          <div style="font-size:13px;font-weight:700;color:var(--ft-text);margin-bottom:10px;">MAR Estimator</div>
+          <div style="font-size:11px;color:var(--ft-text-mid);margin-bottom:12px;line-height:1.5;">Estimate Monthly Active Rows for a prospect. Add connectors they'd use and approximate row counts.</div>
+          <div id="mar-entries"></div>
+          <button class="mar-add-btn" data-action="addMarEntry">+ Add Connector</button>
+          <div id="mar-summary"></div>
         </div>
 
         <div id="details" class="details"></div>
