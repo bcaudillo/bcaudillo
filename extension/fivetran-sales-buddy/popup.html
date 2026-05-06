@@ -27,7 +27,7 @@
         </div>
         <div style="margin-left:auto; position:relative; z-index:1; display:flex; align-items:center; gap:6px;">
           <div class="badge">Connector Scout</div>
-          <div class="badge version-badge" id="version-badge">v0.2.0</div>
+          <div class="badge version-badge" id="version-badge">v0.3.0</div>
         </div>
       </div>
 
@@ -49,6 +49,7 @@
 
       <div class="content">
         <div id="scan" class="section active">
+          <div id="quick-stats"></div>
           <button class="scan-button" data-action="scanDashboard">⚡ Scan Fivetran Dashboard</button>
           <div id="scan-results">
             <div class="empty-state">
@@ -60,12 +61,15 @@
 
         <div id="search" class="section">
           <div class="search-bar">
-            <input type="text" id="search-input" placeholder="Search connectors (e.g., HubSpot, Salesforce)..." />
+            <input type="text" id="search-input" placeholder="Search everything (connectors, issues, glossary, competitors)..." />
           </div>
           <div id="search-results" style="padding-top: 4px;">
-            <div class="empty-state">
-              <div class="icon">🔍</div>
-              <p>Type a connector name to search</p>
+            <div id="recent-section"></div>
+            <div id="universal-results">
+              <div class="empty-state">
+                <div class="icon">🔍</div>
+                <p>Search across connectors, known issues,<br/>glossary terms, error codes & competitors</p>
+              </div>
             </div>
           </div>
         </div>

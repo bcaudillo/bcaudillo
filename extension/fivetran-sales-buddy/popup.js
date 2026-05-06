@@ -445,6 +445,9 @@ function switchTab(tab, btn) {
   if (tab === 'battlecards') {
     loadBattleCards();
   }
+  if (tab === 'search') {
+    renderRecentItems();
+  }
 }
 
 function switchTroubleshootTab(tabName, btn) {
@@ -829,6 +832,7 @@ function loadBattleCards() {
 function showBattleCardDetails(idx) {
   const card = battleCardData[idx];
   const d = document.getElementById('details');
+  addRecentItem('battlecard', idx, card.competitor);
   d.innerHTML = `
     <div class="close" data-action="closeDetails">← Back</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -942,19 +946,114 @@ function selectConnectorIssues(connectorKey, btn) {
   resultsDiv.innerHTML = html;
 }
 
-// ─── SEARCH LISTENERS ──────────────────────────────────────
+// ─── RECENT ITEMS (localStorage) ──────────────────────────────────────
+function getRecentItems() {
+  try { return JSON.parse(localStorage.getItem('ft-scout-recent') || '[]'); } catch { return []; }
+}
+function addRecentItem(type, id, label) {
+  const recents = getRecentItems().filter(r => !(r.type === type && r.id === id));
+  recents.unshift({ type, id, label, ts: Date.now() });
+  localStorage.setItem('ft-scout-recent', JSON.stringify(recents.slice(0, 10)));
+}
+function renderRecentItems() {
+  const section = document.getElementById('recent-section');
+  if (!section) return;
+  const recents = getRecentItems();
+  if (recents.length === 0) { section.innerHTML = ''; return; }
+  section.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:6px;">Recently Viewed</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+      ${recents.slice(0, 6).map(r => {
+        const icon = r.type === 'connector' ? '🔌' : r.type === 'glossary' ? '📚' : r.type === 'battlecard' ? '⚔️' : '📋';
+        const action = r.type === 'connector' ? `data-action="showConnectorDetails" data-key="${r.id}"` :
+                       r.type === 'glossary' ? `data-action="showGlossaryDetails" data-idx="${r.id}"` :
+                       r.type === 'battlecard' ? `data-action="showBattleCardDetails" data-idx="${r.id}"` : '';
+        return `<div class="recent-chip" ${action}>${icon} ${r.label}</div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ─── UNIVERSAL SEARCH ──────────────────────────────────────
 document.getElementById('search-input')?.addEventListener('input', (e) => {
-  const q = e.target.value.toLowerCase();
-  const r = document.getElementById('search-results');
-  if (!q) { r.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>Type a connector name to search</p></div>'; return; }
-  const m = Object.entries(connectorData).filter(([k, c]) => k.includes(q) || c.name.toLowerCase().includes(q));
-  r.innerHTML = m.length === 0 ? '<p style="color:var(--ft-text-light);font-size:13px;padding:12px 0;">No connectors found</p>'
-    : m.map(([k, c]) => `<div class="connector-card" data-action="showConnectorDetails" data-key="${k}">
+  const q = e.target.value.toLowerCase().trim();
+  const r = document.getElementById('universal-results');
+  const recentSection = document.getElementById('recent-section');
+
+  if (!q) {
+    r.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>Search across connectors, known issues,<br/>glossary terms, error codes & competitors</p></div>';
+    if (recentSection) recentSection.style.display = '';
+    renderRecentItems();
+    return;
+  }
+  if (recentSection) recentSection.style.display = 'none';
+
+  let html = '';
+  const maxPerSection = 3;
+
+  // 1. Connectors
+  const connMatches = Object.entries(connectorData).filter(([k, c]) => k.includes(q) || c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q));
+  if (connMatches.length > 0) {
+    html += `<div class="search-section-label">Connectors (${connMatches.length})</div>`;
+    html += connMatches.slice(0, maxPerSection).map(([k, c]) => `<div class="connector-card" data-action="showConnectorDetails" data-key="${k}">
         <div class="connector-name" style="display:flex;align-items:center;gap:6px;">
           <div class="connector-icon ${c.iconClass}" style="width:20px;height:20px;font-size:11px;">${c.icon}</div>${c.name}
         </div>
         <div class="connector-description">${c.description}</div>
       </div>`).join('');
+    if (connMatches.length > maxPerSection) html += `<div class="search-more">+ ${connMatches.length - maxPerSection} more connectors</div>`;
+  }
+
+  // 2. Known Issues (across all connectors)
+  const issueMatches = [];
+  Object.entries(connectorData).forEach(([key, c]) => {
+    (c.knownIssues || []).forEach((issue, idx) => {
+      const fields = [issue.title, issue.preview, issue.rootCause || '', issue.resolution || ''].join(' ').toLowerCase();
+      if (fields.includes(q)) issueMatches.push({ key, idx, issue, connName: c.name });
+    });
+  });
+  if (issueMatches.length > 0) {
+    html += `<div class="search-section-label">Known Issues (${issueMatches.length})</div>`;
+    html += issueMatches.slice(0, maxPerSection).map(m => `<div class="known-issue-item" style="margin-bottom:8px;" data-action="showKnownIssueDetails" data-key="${m.key}" data-idx="${m.idx}">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:1px 6px;border-radius:3px;">${m.connName}</span></div>
+        <div class="issue-title">${m.issue.title}</div>
+        <div class="issue-preview">${m.issue.preview}</div>
+      </div>`).join('');
+    if (issueMatches.length > maxPerSection) html += `<div class="search-more">+ ${issueMatches.length - maxPerSection} more issues</div>`;
+  }
+
+  // 3. Glossary
+  const glossMatches = glossaryData.map((item, idx) => ({ item, idx })).filter(({ item }) => item.term.toLowerCase().includes(q) || item.simple.toLowerCase().includes(q) || item.detailed.toLowerCase().includes(q));
+  if (glossMatches.length > 0) {
+    html += `<div class="search-section-label">Glossary (${glossMatches.length})</div>`;
+    html += glossMatches.slice(0, maxPerSection).map(({ item, idx }) => `<div class="glossary-item" data-action="showGlossaryDetails" data-idx="${idx}"><div class="glossary-term">${item.term}</div><div class="glossary-simple">${item.simple}</div></div>`).join('');
+    if (glossMatches.length > maxPerSection) html += `<div class="search-more">+ ${glossMatches.length - maxPerSection} more terms</div>`;
+  }
+
+  // 4. Error Codes
+  const errMatches = troubleshootingData.map((item, idx) => ({ item, idx })).filter(({ item }) => item.errorCode.includes(q) || item.title.toLowerCase().includes(q) || item.diagnosis.toLowerCase().includes(q));
+  if (errMatches.length > 0) {
+    html += `<div class="search-section-label">Error Codes (${errMatches.length})</div>`;
+    html += errMatches.slice(0, maxPerSection).map(({ item, idx }) => `<div class="error-code-item" style="text-align:left;padding:10px 12px;display:flex;align-items:center;gap:10px;" data-action="showTroubleshootingDetails" data-idx="${idx}">
+        <div class="error-code-number">${item.errorCode}</div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--ft-text);">${item.title}</div><div style="font-size:11px;color:var(--ft-text-light);">${item.preview}</div></div>
+      </div>`).join('');
+  }
+
+  // 5. Battle Cards
+  const battleMatches = battleCardData.map((card, idx) => ({ card, idx })).filter(({ card }) => card.competitor.toLowerCase().includes(q) || card.type.toLowerCase().includes(q) || card.summary.toLowerCase().includes(q));
+  if (battleMatches.length > 0) {
+    html += `<div class="search-section-label">Competitors (${battleMatches.length})</div>`;
+    html += battleMatches.slice(0, maxPerSection).map(({ card, idx }) => `<div class="battlecard-item" data-action="showBattleCardDetails" data-idx="${idx}">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:14px;font-weight:800;color:var(--ft-text);">⚔️ ${card.competitor}</div>
+          <span style="font-size:10px;font-weight:600;color:var(--ft-text-light);background:var(--ft-bg);padding:2px 8px;border-radius:4px;">${card.type}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  if (!html) {
+    html = '<p style="color:var(--ft-text-light);font-size:13px;padding:12px 0;text-align:center;">No results found for "' + e.target.value + '"</p>';
+  }
+  r.innerHTML = html;
 });
 
 document.getElementById('error-paste-input')?.addEventListener('keydown', (e) => {
@@ -972,7 +1071,8 @@ document.getElementById('glossary-input')?.addEventListener('input', (e) => {
 
 // ─── DETAIL VIEWS ──────────────────────────────────────
 function showConnectorDetails(key) {
-  const c = connectorData[key]; const d = document.getElementById('details');
+  const c = connectorData[key]; if (!c) return; const d = document.getElementById('details');
+  addRecentItem('connector', key, c.name);
   d.innerHTML = `
     <div class="close" data-action="closeDetails">← Back</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -1058,6 +1158,7 @@ function showTroubleshootingDetails(idx) {
 
 function showGlossaryDetails(idx) {
   const item = glossaryData[idx]; const d = document.getElementById('details');
+  addRecentItem('glossary', idx, item.term);
   d.innerHTML = `
     <div class="close" data-action="closeDetails">← Back</div>
     <div class="detail-title">${item.term}</div>
@@ -1169,6 +1270,24 @@ document.getElementById('known-issue-input')?.addEventListener('input', (e) => {
 
 loadErrorCodes();
 setupConnectorAutocomplete();
+renderRecentItems();
+renderQuickStats();
+
+// ─── QUICK STATS ──────────────────────────────────────
+function renderQuickStats() {
+  const el = document.getElementById('quick-stats');
+  if (!el) return;
+  const totalConnectors = Object.keys(connectorData).length;
+  const totalIssues = Object.values(connectorData).reduce((sum, c) => sum + (c.knownIssues || []).length, 0);
+  const totalGlossary = glossaryData.length;
+  const totalCompetitors = battleCardData.length;
+  el.innerHTML = `<div class="quick-stats-grid">
+    <div class="stat-card"><div class="stat-num">${totalConnectors}</div><div class="stat-label">Connectors</div></div>
+    <div class="stat-card"><div class="stat-num">${totalIssues}</div><div class="stat-label">Known Issues</div></div>
+    <div class="stat-card"><div class="stat-num">${totalGlossary}</div><div class="stat-label">Glossary Terms</div></div>
+    <div class="stat-card"><div class="stat-num">${totalCompetitors}</div><div class="stat-label">Battle Cards</div></div>
+  </div>`;
+}
 
 // ─── STATUS BAR HELPERS ──────────────────────────────────────
 function setStatus(state, text, count) {
@@ -1220,6 +1339,7 @@ function setStatus(state, text, count) {
     console.log(`Merged ${supaCount} Supabase connectors (${mergedFromSupa} used) with ${total} total.`);
     setStatus('ok', `Supabase synced — ${supaCount} from DB, ${total} total`, totalIssues + ' issues');
     setupConnectorAutocomplete();
+    renderQuickStats();
 
     if (document.getElementById('known-issues-tab').style.display === 'block') {
       loadKnownIssuesTab();

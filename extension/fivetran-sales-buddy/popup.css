@@ -221,6 +221,21 @@
     .battlecard-item { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
     .battlecard-item:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); }
 
+    /* ── QUICK STATS ── */
+    .quick-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-card { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .stat-num { font-size: 18px; font-weight: 800; color: var(--ft-blue); }
+    .stat-label { font-size: 9px; font-weight: 600; color: var(--ft-text-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+
+    /* ── UNIVERSAL SEARCH ── */
+    .search-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ft-text-light); margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--ft-border); }
+    .search-section-label:first-child { margin-top: 0; }
+    .search-more { font-size: 11px; color: var(--ft-blue); font-weight: 600; padding: 4px 0 8px; cursor: default; }
+
+    /* ── RECENT CHIPS ── */
+    .recent-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ft-text-mid); background: #FAFBFE; border: 1.5px solid var(--ft-border); padding: 5px 10px; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
+    .recent-chip:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); color: var(--ft-blue); }
+
     /* ── DETAILS PANEL ── */
     .details { display: none; padding: 16px; background: white; }
     .details.active { display: block; }
