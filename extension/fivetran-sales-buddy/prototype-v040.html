@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fivetran Connector Scout v0.4.0</title>
+  <style>
+    :root {
+      --ft-blue: #306BEA;
+      --ft-blue-dark: #1A4FBF;
+      --ft-blue-light: #EBF1FD;
+      --ft-blue-mid: #93B4F4;
+      --ft-navy: #0B1B36;
+      --ft-bg: #F4F6FA;
+      --ft-border: #E2E8F0;
+      --ft-text: #1A202C;
+      --ft-text-mid: #4A5568;
+      --ft-text-light: #A0AEC0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: var(--ft-bg); padding: 12px; transition: background 0.3s, color 0.3s; }
+    .container { max-width: 520px; margin: 0 auto; }
+    .popup { background: #fff; border-radius: 14px; box-shadow: 0 8px 32px rgba(20,50,100,0.10); overflow: hidden; border: 1px solid var(--ft-border); transition: background 0.3s; }
+    .header { padding: 14px 20px; background: var(--ft-navy); color: white; display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; }
+    .header::after { content: ''; position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; background: rgba(48,107,234,0.07); border-radius: 50%; }
+    .header .ft-logo { flex-shrink: 0; position: relative; z-index: 1; }
+    .badge { font-size: 9px; font-weight: 700; background: rgba(48,107,234,0.3); color: #93B4F4; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .version-badge { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); font-size: 8px; font-weight: 600; }
+    .dark-toggle { cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; position: relative; z-index: 1; }
+    .dark-toggle:hover { background: rgba(255,255,255,0.1); }
+
+    .status-bar { display: flex; align-items: center; gap: 6px; padding: 4px 20px; font-size: 10px; color: var(--ft-text-light); border-bottom: 1px solid var(--ft-border); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: #22c55e; }
+    .status-count { margin-left: auto; font-weight: 600; font-size: 9px; opacity: 0.7; }
+
+    .toolbar { padding: 8px 12px; border-bottom: 1px solid var(--ft-border); display: flex; gap: 4px; background: #FAFBFE; overflow-x: auto; -webkit-overflow-scrolling: touch; transition: background 0.3s; }
+    .toolbar button { padding: 6px 10px; border: 1.5px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--ft-text-light); white-space: nowrap; font-family: inherit; transition: all 0.2s; flex: 1; text-align: center; }
+    .toolbar button:hover { color: var(--ft-blue); background: var(--ft-blue-light); }
+    .toolbar button.active { background: var(--ft-blue); color: white; border-color: var(--ft-blue); box-shadow: 0 2px 8px rgba(48,107,234,0.3); }
+
+    .content { padding: 12px 16px 16px; max-height: 520px; overflow-y: auto; min-height: 200px; position: relative; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .quick-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-card { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 8px; padding: 10px 8px; text-align: center; transition: background 0.3s; }
+    .stat-num { font-size: 18px; font-weight: 800; color: var(--ft-blue); }
+    .stat-label { font-size: 9px; font-weight: 600; color: var(--ft-text-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+
+    .scan-button { width: 100%; padding: 13px; background: var(--ft-blue); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px; font-family: inherit; box-shadow: 0 4px 12px rgba(48,107,234,0.25); transition: all 0.15s; }
+    .scan-button:hover { transform: translateY(-1px); }
+
+    .connector-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 700; flex-shrink: 0; }
+    .icon-hubspot { background: #ff7a59; }
+    .icon-salesforce { background: #00a1e0; }
+    .icon-stripe { background: #635bff; }
+    .icon-google { background: #4285F4; }
+    .icon-facebook { background: #1877F2; }
+    .icon-netsuite { background: #C74634; }
+    .icon-linkedin { background: #0A66C2; }
+    .icon-shopify { background: #95BF47; }
+
+    .connector-card { background: #FAFBFE; border: 1.5px solid var(--ft-border); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+    .connector-card:hover { background: var(--ft-blue-light); border-color: var(--ft-blue-mid); }
+    .scan-status { background: #ecfdf5; border: 1.5px solid #86efac; border-radius: 10px; padding: 12px 14px; margin-top: 12px; margin-bottom: 12px; font-size: 13px; color: #166534; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .scan-status .check { width: 20px; height: 20px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; flex-shrink: 0; }
+
+    .reco-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ft-blue); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .reco-card { background: linear-gradient(135deg, #EBF1FD 0%, #F0F4FF 100%); border: 1.5px solid var(--ft-blue-mid); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .reco-card:hover { border-color: var(--ft-blue); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(48,107,234,0.12); }
+    .reco-name { font-weight: 700; font-size: 13px; color: var(--ft-text); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+    .reco-reason { font-size: 11px; color: var(--ft-text-mid); line-height: 1.5; }
+
+    .export-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ft-blue); cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--ft-border); background: var(--ft-blue-light); transition: all 0.2s; width: 100%; justify-content: center; margin-bottom: 8px; }
+    .export-btn:hover { background: var(--ft-blue); color: white; }
+
+    .copy-btn { font-size: 10px; font-weight: 600; color: var(--ft-blue); cursor: pointer; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--ft-blue-mid); background: var(--ft-blue-light); transition: all 0.2s; }
+    .copy-btn:hover { background: var(--ft-blue); color: white; }
+
+    .fav-star { font-size: 20px; cursor: pointer; color: var(--ft-text-light); margin-left: auto; transition: all 0.2s; }
+    .fav-star:hover { color: #F59E0B; transform: scale(1.2); }
+    .fav-star.active { color: #F59E0B; }
+
+    .details { display: none; padding: 16px; background: white; transition: background 0.3s; }
+    .details.active { display: block; }
+    .content.showing-details > .section { display: none !important; }
+    .content.showing-details > .details { display: block; }
+    .content.showing-details { max-height: none; }
+    .close { cursor: pointer; color: var(--ft-blue); font-weight: 600; margin-bottom: 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+    .detail-title { font-size: 17px; font-weight: 700; color: var(--ft-text); margin-bottom: 14px; line-height: 1.3; }
+    .detail-section { margin-bottom: 14px; }
+    .detail-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ft-text-light); margin-bottom: 5px; }
+    .detail-text { font-size: 13px; color: var(--ft-text-mid); line-height: 1.7; }
+
+    .known-issue-item { background: white; border: 1.5px solid var(--ft-border); border-left: 3px solid #f59e0b; padding: 11px 14px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .known-issue-item:hover { background: #fffbeb; }
+    .issue-title { font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 3px; }
+    .issue-preview { font-size: 11px; color: var(--ft-text-light); }
+
+    .solution-step { background: #FAFBFE; border-left: 3px solid var(--ft-blue); padding: 12px 14px; margin: 8px 0; border-radius: 0 8px 8px 0; }
+    .step-title { font-weight: 700; font-size: 12px; color: var(--ft-blue); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .step-text { font-size: 12px; color: var(--ft-text-mid); line-height: 1.6; }
+
+    .empty-state { text-align: center; padding: 32px 16px; color: var(--ft-text-light); }
+    .empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+    .empty-state p { font-size: 13px; }
+
+    /* Dark mode */
+    .dark-mode { --ft-blue: #5B8DEF; --ft-blue-dark: #93B4F4; --ft-blue-light: #1A2744; --ft-blue-mid: #2D4A7A; --ft-navy: #0D1117; --ft-bg: #161B22; --ft-border: #30363D; --ft-text: #E6EDF3; --ft-text-mid: #8B949E; --ft-text-light: #484F58; }
+    .dark-mode .popup { background: #0D1117; border-color: #30363D; }
+    .dark-mode .header { background: #010409; }
+    .dark-mode .toolbar { background: #161B22; }
+    .dark-mode .scan-button { background: #5B8DEF; }
+    .dark-mode .connector-card, .dark-mode .stat-card, .dark-mode .known-issue-item, .dark-mode .solution-step { background: #161B22; }
+    .dark-mode .details { background: #0D1117; }
+    .dark-mode .scan-status { background: #0D2818; border-color: #1A4731; color: #3FB950; }
+    .dark-mode .scan-status .check { background: #238636; }
+    .dark-mode .issue-title { color: #E6EDF3; }
+    .dark-mode .reco-card { background: linear-gradient(135deg, #1A2744 0%, #1D2D50 100%); }
+    .dark-mode .export-btn { background: #1A2744; border-color: #2D4A7A; }
+    .dark-mode .copy-btn { background: #1A2744; border-color: #2D4A7A; }
+
+    @media (max-width: 400px) {
+      .quick-stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .toolbar button { font-size: 10px; padding: 5px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="popup">
+      <div class="header">
+        <div class="ft-logo">
+          <svg width="110" height="28" viewBox="0 0 440 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="56" width="32" height="10" rx="1.5" transform="rotate(-45 4 56)" fill="#306BEA"/>
+            <rect x="18" y="56" width="48" height="10" rx="1.5" transform="rotate(-45 18 56)" fill="#306BEA"/>
+            <rect x="32" y="56" width="56" height="10" rx="1.5" transform="rotate(-45 32 56)" fill="#306BEA"/>
+            <rect x="46" y="56" width="48" height="10" rx="1.5" transform="rotate(-45 46 56)" fill="#306BEA"/>
+            <rect x="60" y="56" width="32" height="10" rx="1.5" transform="rotate(-45 60 56)" fill="#306BEA"/>
+            <text x="120" y="70" font-family="'DM Sans', Arial, sans-serif" font-weight="700" font-size="54" fill="white" letter-spacing="-1">fivetran</text>
+          </svg>
+        </div>
+        <div style="margin-left:auto; position:relative; z-index:1; display:flex; align-items:center; gap:6px;">
+          <div class="badge">Connector Scout</div>
+          <div class="badge version-badge">v0.4.0</div>
+          <span class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</span>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span class="status-dot"></span>
+        <span>Supabase synced — 59 from DB, 62 total</span>
+        <span class="status-count">187 issues</span>
+      </div>
+
+      <div class="toolbar" id="toolbar">
+        <button class="active" data-tab="scan">📡 Scan</button>
+        <button data-tab="search">🔍 Search</button>
+        <button data-tab="troubleshoot">🔧 Troubleshoot</button>
+        <button data-tab="battlecards">⚔️ Compete</button>
+        <button data-tab="glossary">📚 Glossary</button>
+        <button data-tab="calculator">📊 MAR</button>
+      </div>
+
+      <div class="content" id="content">
+        <!-- SCAN TAB -->
+        <div id="scan" class="section active">
+          <div class="quick-stats-grid">
+            <div class="stat-card"><div class="stat-num">62</div><div class="stat-label">Connectors</div></div>
+            <div class="stat-card"><div class="stat-num">187</div><div class="stat-label">Known Issues</div></div>
+            <div class="stat-card"><div class="stat-num">32</div><div class="stat-label">Glossary</div></div>
+            <div class="stat-card"><div class="stat-num">7</div><div class="stat-label">Battle Cards</div></div>
+          </div>
+          <button class="scan-button" onclick="simulateScan()">⚡ Scan Fivetran Dashboard</button>
+          <div id="scan-results">
+            <div class="empty-state">
+              <div class="icon">📡</div>
+              <p>Scan a Fivetran dashboard to detect<br/>active connectors</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- OTHER TABS (simplified for prototype) -->
+        <div id="search" class="section">
+          <div style="padding:10px 0;"><input type="text" placeholder="Search everything (connectors, issues, glossary, competitors)..." style="width:100%;padding:10px 14px;border:1.5px solid var(--ft-border);border-radius:10px;font-size:13px;font-family:inherit;background:#FAFBFE;" /></div>
+          <div class="empty-state"><div class="icon">🔍</div><p>Search across connectors, known issues,<br/>glossary terms, error codes & competitors</p></div>
+        </div>
+        <div id="troubleshoot" class="section"><div class="empty-state"><div class="icon">🔧</div><p>Error codes & known issues</p></div></div>
+        <div id="battlecards" class="section"><div class="empty-state"><div class="icon">⚔️</div><p>Competitor battle cards</p></div></div>
+        <div id="glossary" class="section"><div class="empty-state"><div class="icon">📚</div><p>Glossary terms</p></div></div>
+        <div id="calculator" class="section"><div class="empty-state"><div class="icon">📊</div><p>MAR estimator</p></div></div>
+
+        <!-- DETAILS PANEL -->
+        <div id="details" class="details"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.getElementById('toolbar').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.toolbar button').forEach(el => el.classList.remove('active'));
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      btn.classList.add('active');
+      closeDetails();
+    });
+
+    // Dark mode
+    function toggleDark() {
+      const isDark = document.body.classList.toggle('dark-mode');
+      document.querySelector('.dark-toggle').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    // Simulated scan with recommendations
+    function simulateScan() {
+      const btn = document.querySelector('.scan-button');
+      const r = document.getElementById('scan-results');
+      btn.textContent = '⏳ Scanning...';
+      btn.disabled = true;
+      setTimeout(() => {
+        r.innerHTML = `
+          <div class="scan-status"><div class="check">✓</div><span>Found <strong>3 connector types</strong> across 5 connections</span></div>
+
+          <div class="connector-card" onclick="showConnector('salesforce')" style="display:flex;align-items:center;gap:8px;">
+            <div class="connector-icon icon-salesforce">S</div>
+            <span style="font-weight:700;color:var(--ft-text);">Salesforce</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">16 known issues</span>
+          </div>
+          <div class="connector-card" onclick="showConnector('hubspot')" style="display:flex;align-items:center;gap:8px;">
+            <div class="connector-icon icon-hubspot">H</div>
+            <span style="font-weight:700;color:var(--ft-text);">HubSpot</span>
+            <span style="font-size:10px;color:var(--ft-text-light);margin-left:4px;">×2</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">26 known issues</span>
+          </div>
+          <div class="connector-card" onclick="showConnector('stripe')" style="display:flex;align-items:center;gap:8px;">
+            <div class="connector-icon icon-stripe">$</div>
+            <span style="font-weight:700;color:var(--ft-text);">Stripe</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">14 known issues</span>
+          </div>
+
+          <!-- RECOMMENDATIONS - NEW! -->
+          <div style="margin-top:14px;">
+            <div class="reco-label">💡 Recommended Connectors</div>
+            <div class="reco-card" onclick="showConnector('netsuite')">
+              <div class="reco-name">
+                <div class="connector-icon icon-netsuite" style="width:18px;height:18px;font-size:10px;">N</div>
+                NetSuite
+                <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">2 connectors link here</span>
+              </div>
+              <div class="reco-reason">Bridge CRM pipeline to ERP financials for full order-to-cash visibility</div>
+            </div>
+            <div class="reco-card">
+              <div class="reco-name">
+                <div class="connector-icon icon-google" style="width:18px;height:18px;font-size:10px;">G</div>
+                Google Ads
+                <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">Pairs with HubSpot</span>
+              </div>
+              <div class="reco-reason">Attribute marketing spend to HubSpot leads and deals</div>
+            </div>
+            <div class="reco-card">
+              <div class="reco-name">
+                <div class="connector-icon icon-facebook" style="width:18px;height:18px;font-size:10px;">f</div>
+                Facebook Ads
+                <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">Pairs with HubSpot</span>
+              </div>
+              <div class="reco-reason">Track Facebook ad performance alongside HubSpot contact acquisition</div>
+            </div>
+            <div class="reco-card">
+              <div class="reco-name">
+                <div class="connector-icon icon-linkedin" style="width:18px;height:18px;font-size:10px;">in</div>
+                LinkedIn Ads
+                <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">Pairs with Salesforce</span>
+              </div>
+              <div class="reco-reason">Tie LinkedIn ad engagement to Salesforce lead conversion</div>
+            </div>
+          </div>
+
+          <!-- EXPORT SCAN BRIEFING - NEW! -->
+          <div style="margin-top:12px;">
+            <span class="export-btn" onclick="copyBriefing()">📋 Copy scan briefing to clipboard</span>
+          </div>`;
+        btn.textContent = '⚡ Scan Fivetran Dashboard';
+        btn.disabled = false;
+      }, 1200);
+    }
+
+    // Connector detail with export
+    function showConnector(key) {
+      const names = { hubspot: 'HubSpot', salesforce: 'Salesforce', stripe: 'Stripe', netsuite: 'NetSuite' };
+      const icons = { hubspot: ['H','icon-hubspot'], salesforce: ['S','icon-salesforce'], stripe: ['$','icon-stripe'], netsuite: ['N','icon-netsuite'] };
+      const d = document.getElementById('details');
+      const [icon, cls] = icons[key] || ['?',''];
+      d.innerHTML = `
+        <div class="close" onclick="closeDetails()">← Back</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div class="connector-icon ${cls}" style="width:32px;height:32px;font-size:16px;">${icon}</div>
+          <div class="detail-title" style="margin-bottom:0;">${names[key]}</div>
+          <span class="fav-star" onclick="this.classList.toggle('active');this.textContent=this.classList.contains('active')?'★':'☆'">☆</span>
+        </div>
+        <div class="detail-section"><div class="detail-label">What it does</div><div class="detail-text">${names[key]} is a cloud platform. Fivetran syncs its data to your warehouse for analytics.</div></div>
+        <div class="detail-section"><div class="detail-label">Tables (5)</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--ft-border);font-weight:600;font-size:13px;color:var(--ft-text);">CONTACT</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--ft-border);font-weight:600;font-size:13px;color:var(--ft-text);">COMPANY</div>
+          <div style="padding:8px 0;font-weight:600;font-size:13px;color:var(--ft-text);">DEAL</div>
+        </div>
+        <div class="detail-section"><div class="detail-label">Known Issues (3 of 26)</div>
+          <div class="known-issue-item" style="margin-top:6px;"><div class="issue-title">Missing Columns, Tables, or Values</div><div class="issue-preview">Columns, tables, or values missing in destination</div></div>
+          <div class="known-issue-item" style="margin-top:6px;border-left-color:#ef4444;"><div class="issue-title">Couldn't Complete the Connection Error</div><div class="issue-preview">Initial setup fails with connection error</div></div>
+        </div>
+        <div class="detail-section" style="margin-top:4px;"><a href="#" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ft-blue);text-decoration:none;padding:10px 14px;background:var(--ft-blue-light);border-radius:8px;border:1.5px solid var(--ft-border);width:100%;justify-content:center;">📄 View full Fivetran docs →</a></div>
+        <div class="detail-section"><span class="export-btn" onclick="copyBriefing()">📋 Copy briefing to clipboard</span></div>`;
+      openDetails();
+    }
+
+    function openDetails() {
+      document.querySelector('.content').classList.add('showing-details');
+      document.getElementById('details').classList.add('active');
+      document.querySelector('.content').scrollTop = 0;
+    }
+    function closeDetails() {
+      document.getElementById('details').classList.remove('active');
+      document.querySelector('.content').classList.remove('showing-details');
+    }
+
+    function copyBriefing() {
+      const text = `📋 Fivetran Dashboard Scan — Briefing
+════════════════════════════════════════
+Connectors detected: 3
+Date: ${new Date().toLocaleDateString()}
+
+▸ Salesforce
+  Enterprise CRM and customer success platform
+  Tables: 5 | Known Issues: 16
+
+▸ HubSpot
+  CRM platform for managing sales, marketing, and customer service
+  Tables: 5 | Known Issues: 26
+
+▸ Stripe
+  Payment processing and billing platform
+  Tables: 5 | Known Issues: 14
+
+💡 Recommended Connectors to Add:
+  • NetSuite — Bridge CRM pipeline to ERP financials
+  • Google Ads — Attribute marketing spend to leads and deals
+  • Facebook Ads — Track ad performance alongside contact acquisition
+  • LinkedIn Ads — Tie ad engagement to lead conversion
+
+— Generated by Fivetran Connector Scout v0.4.0`;
+
+      navigator.clipboard.writeText(text).then(() => {
+        const btns = document.querySelectorAll('.export-btn');
+        btns.forEach(btn => {
+          const original = btn.innerHTML;
+          btn.innerHTML = '✅ Copied to clipboard!';
+          btn.style.color = '#16a34a';
+          setTimeout(() => { btn.innerHTML = original; btn.style.color = ''; }, 2000);
+        });
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetails();
+    });
+  </script>
+</body>
+</html>

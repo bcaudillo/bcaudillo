@@ -297,3 +297,74 @@
     .table-detail-row { padding: 10px 0; border-bottom: 1px solid #F1F3F8; }
     .table-detail-row:last-child { border-bottom: none; }
     .table-name-link { font-weight: 600; font-size: 13px; color: var(--ft-text); display: flex; justify-content: space-between; align-items: center; }
+
+    /* ── DARK MODE ── */
+    .dark-mode {
+      --ft-blue: #5B8DEF;
+      --ft-blue-dark: #93B4F4;
+      --ft-blue-light: #1A2744;
+      --ft-blue-mid: #2D4A7A;
+      --ft-navy: #0D1117;
+      --ft-bg: #161B22;
+      --ft-border: #30363D;
+      --ft-text: #E6EDF3;
+      --ft-text-mid: #8B949E;
+      --ft-text-light: #484F58;
+    }
+    .dark-mode .popup { background: #0D1117; border-color: #30363D; }
+    .dark-mode .header { background: #010409; }
+    .dark-mode .toolbar { background: #161B22; }
+    .dark-mode .scan-button { background: #5B8DEF; box-shadow: 0 4px 12px rgba(91,141,239,0.25); }
+    .dark-mode .scan-button:hover { background: #4A7ADE; }
+    .dark-mode .connector-card,
+    .dark-mode .glossary-item,
+    .dark-mode .battlecard-item,
+    .dark-mode .detected-item,
+    .dark-mode .error-code-item,
+    .dark-mode .stat-card,
+    .dark-mode .mar-summary-box,
+    .dark-mode .connector-pick-btn,
+    .dark-mode .troubleshooting-item { background: #161B22; }
+    .dark-mode .details { background: #0D1117; }
+    .dark-mode .known-issue-item { background: #161B22; }
+    .dark-mode .solution-step { background: #161B22; }
+    .dark-mode .sub-issue { background: #161B22; }
+    .dark-mode .search-bar input,
+    .dark-mode .mar-connector-input,
+    .dark-mode .mar-rows-input,
+    .dark-mode textarea,
+    .dark-mode #error-connector-input { background: #0D1117; color: var(--ft-text); border-color: #30363D; }
+    .dark-mode .search-bar input:focus,
+    .dark-mode .mar-connector-input:focus,
+    .dark-mode .mar-rows-input:focus { background: #161B22; }
+    .dark-mode .troubleshoot-tabs { background: #161B22; }
+    .dark-mode .troubleshoot-tab.active { background: #0D1117; color: #5B8DEF; }
+    .dark-mode .scan-status { background: #0D2818; border-color: #1A4731; color: #3FB950; }
+    .dark-mode .scan-status .check { background: #238636; }
+    .dark-mode .issue-title { color: #E6EDF3; }
+    .dark-mode .error-code-number { color: #5B8DEF; }
+    .dark-mode .category-header { color: #484F58; }
+    .dark-mode .copy-btn { background: #1A2744; border-color: #2D4A7A; color: #5B8DEF; }
+    .dark-mode .copy-btn:hover { background: #5B8DEF; color: #0D1117; }
+    .dark-mode .recent-chip { background: #161B22; border-color: #30363D; color: #8B949E; }
+    .dark-mode .fav-chip { background: #2D2006; border-color: #5C4813; }
+    .dark-mode .mar-add-btn { border-color: #30363D; }
+    .dark-mode #error-connector-dropdown { background: #161B22; border-color: #30363D; }
+    .dark-mode .detail-text { color: #8B949E; }
+    .dark-mode .connector-description { color: #8B949E; }
+
+    /* ── DARK MODE TOGGLE ── */
+    .dark-toggle { cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
+    .dark-toggle:hover { background: rgba(255,255,255,0.1); }
+
+    /* ── EXPORT BRIEFING ── */
+    .export-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ft-blue); cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--ft-border); background: var(--ft-blue-light); transition: all 0.2s; width: 100%; justify-content: center; margin-bottom: 8px; }
+    .export-btn:hover { background: var(--ft-blue); color: white; }
+
+    /* ── RECOMMENDATIONS ── */
+    .reco-card { background: linear-gradient(135deg, #EBF1FD 0%, #F0F4FF 100%); border: 1.5px solid var(--ft-blue-mid); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .reco-card:hover { border-color: var(--ft-blue); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(48,107,234,0.12); }
+    .dark-mode .reco-card { background: linear-gradient(135deg, #1A2744 0%, #1D2D50 100%); }
+    .reco-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ft-blue); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .reco-name { font-weight: 700; font-size: 13px; color: var(--ft-text); margin-bottom: 3px; }
+    .reco-reason { font-size: 11px; color: var(--ft-text-mid); line-height: 1.5; }

@@ -640,6 +640,15 @@ function handleScanResults(response) {
       }).join('');
     }
 
+    // Recommendations based on scanned connectors
+    const recoHtml = renderRecommendations(scannedConnectors);
+    if (recoHtml) {
+      r.innerHTML += `<div style="margin-top:14px;">${recoHtml}</div>`;
+    }
+
+    // Export scan briefing button
+    r.innerHTML += `<div style="margin-top:12px;"><span class="export-btn" data-action="exportScanBriefing">📋 Copy scan briefing to clipboard</span></div>`;
+
   } else if (response.page === 'connector-detail') {
     // Single connector detail view
     const key = response.sourceType?.toLowerCase().replace(/\s+/g, '');
@@ -1127,7 +1136,8 @@ function showConnectorDetails(key) {
       ${c.knownIssues.slice(0, 3).map((issue, i) => `<div class="known-issue-item ${getCatCSS(issue.category)}" style="margin-top:6px;" data-action="showKnownIssueDetails" data-key="${key}" data-idx="${i}"><div class="issue-title">${issue.title}</div><div class="issue-preview">${issue.preview}</div></div>`).join('')}
       ${c.knownIssues.length > 3 ? `<div style="text-align:center;margin-top:8px;"><a class="learn-more" data-action="viewAllIssues" data-key="${key}">View all ${c.knownIssues.length} issues →</a></div>` : ''}
     </div>
-    ${c.docsUrl ? `<div class="detail-section" style="margin-top:4px;"><a href="${c.docsUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ft-blue);text-decoration:none;padding:10px 14px;background:var(--ft-blue-light);border-radius:8px;border:1.5px solid var(--ft-border);width:100%;justify-content:center;">📄 View full Fivetran docs →</a></div>` : ''}`;
+    ${c.docsUrl ? `<div class="detail-section" style="margin-top:4px;"><a href="${c.docsUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ft-blue);text-decoration:none;padding:10px 14px;background:var(--ft-blue-light);border-radius:8px;border:1.5px solid var(--ft-border);width:100%;justify-content:center;">📄 View full Fivetran docs →</a></div>` : ''}
+    <div class="detail-section"><span class="export-btn" data-action="exportBriefing" data-key="${key}">📋 Copy briefing to clipboard</span></div>`;
   openDetails();
 }
 
@@ -1285,6 +1295,17 @@ document.addEventListener('click', (e) => {
       toggleFavorite(key);
       showConnectorDetails(key);
       break;
+    case 'toggleDarkMode':
+      toggleDarkMode();
+      break;
+    case 'exportBriefing':
+      { const briefing = exportConnectorBriefing(key);
+        if (briefing) copyToClipboard(briefing, el); }
+      break;
+    case 'exportScanBriefing':
+      { const scanBrief = exportScanBriefing();
+        if (scanBrief) copyToClipboard(scanBrief, el); }
+      break;
     case 'addMarEntry':
       addMarEntry();
       break;
@@ -1321,6 +1342,164 @@ loadErrorCodes();
 setupConnectorAutocomplete();
 renderRecentItems();
 renderQuickStats();
+initDarkMode();
+
+// ─── DARK MODE ──────────────────────────────────────
+function initDarkMode() {
+  if (localStorage.getItem('ft-scout-dark') === '1') {
+    document.body.classList.add('dark-mode');
+    const toggle = document.querySelector('.dark-toggle');
+    if (toggle) toggle.textContent = '☀️';
+  }
+}
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('ft-scout-dark', isDark ? '1' : '0');
+  const toggle = document.querySelector('.dark-toggle');
+  if (toggle) toggle.textContent = isDark ? '☀️' : '🌙';
+}
+
+// ─── CONNECTOR RECOMMENDATIONS ──────────────────────────────────────
+const connectorRecommendations = {
+  hubspot: [
+    { key: 'salesforce', reason: 'Blend CRM data — compare HubSpot marketing leads with Salesforce pipeline' },
+    { key: 'google_ads', reason: 'Attribute marketing spend to HubSpot leads and deals' },
+    { key: 'stripe', reason: 'Connect HubSpot deals to actual Stripe payments for revenue attribution' },
+    { key: 'facebook_ads', reason: 'Track Facebook ad performance alongside HubSpot contact acquisition' }
+  ],
+  salesforce: [
+    { key: 'hubspot', reason: 'Combine Salesforce pipeline with HubSpot marketing engagement data' },
+    { key: 'stripe', reason: 'Match Salesforce opportunities to Stripe payments for closed-won validation' },
+    { key: 'netsuite', reason: 'Bridge sales pipeline to ERP financials for order-to-cash analytics' },
+    { key: 'linkedin_ads', reason: 'Tie LinkedIn ad engagement to Salesforce lead conversion' }
+  ],
+  stripe: [
+    { key: 'hubspot', reason: 'Link payments to CRM contacts for customer lifetime value analysis' },
+    { key: 'salesforce', reason: 'Validate closed-won deals against actual Stripe revenue' },
+    { key: 'shopify', reason: 'Combine e-commerce orders with payment processing data' },
+    { key: 'netsuite', reason: 'Reconcile Stripe transactions with ERP accounting records' }
+  ],
+  shopify: [
+    { key: 'stripe', reason: 'Reconcile Shopify orders with Stripe payment processing' },
+    { key: 'google_ads', reason: 'Calculate true ROAS by connecting ad spend to Shopify revenue' },
+    { key: 'facebook_ads', reason: 'Track social ad performance to actual purchases' },
+    { key: 'hubspot', reason: 'Sync customer purchase data to CRM for retention marketing' }
+  ],
+  netsuite: [
+    { key: 'salesforce', reason: 'Bridge CRM pipeline to ERP financials for full order-to-cash visibility' },
+    { key: 'hubspot', reason: 'Connect marketing leads to ERP customer and revenue records' },
+    { key: 'stripe', reason: 'Reconcile online payments with NetSuite accounting' }
+  ],
+  google_ads: [
+    { key: 'facebook_ads', reason: 'Cross-channel ad attribution — compare Google vs Facebook ROAS' },
+    { key: 'hubspot', reason: 'Attribute Google Ads clicks to CRM leads and deals' },
+    { key: 'salesforce', reason: 'Track ad spend through to closed-won revenue in Salesforce' },
+    { key: 'shopify', reason: 'Calculate true ROAS by matching ad clicks to purchases' }
+  ],
+  facebook_ads: [
+    { key: 'google_ads', reason: 'Cross-channel comparison — unified view of ad performance' },
+    { key: 'hubspot', reason: 'Connect Facebook leads to CRM pipeline and engagement' },
+    { key: 'shopify', reason: 'Attribute Facebook ad spend to actual e-commerce revenue' }
+  ]
+};
+
+function getRecommendations(scannedKeys) {
+  const existing = new Set(scannedKeys);
+  const recoMap = new Map();
+  for (const key of scannedKeys) {
+    const recos = connectorRecommendations[key] || [];
+    for (const r of recos) {
+      if (existing.has(r.key)) continue;
+      if (!connectorData[r.key]) continue;
+      if (!recoMap.has(r.key)) {
+        recoMap.set(r.key, { key: r.key, reasons: [r.reason], fromConnectors: [key] });
+      } else {
+        const entry = recoMap.get(r.key);
+        entry.reasons.push(r.reason);
+        entry.fromConnectors.push(key);
+      }
+    }
+  }
+  return Array.from(recoMap.values()).sort((a, b) => b.fromConnectors.length - a.fromConnectors.length).slice(0, 4);
+}
+
+function renderRecommendations(scannedKeys) {
+  const recos = getRecommendations(scannedKeys);
+  if (recos.length === 0) return '';
+  let html = `<div class="reco-label">💡 Recommended Connectors</div>`;
+  html += recos.map(r => {
+    const c = connectorData[r.key];
+    return `<div class="reco-card" data-action="showConnectorDetails" data-key="${r.key}">
+      <div class="reco-name" style="display:flex;align-items:center;gap:6px;">
+        <div class="connector-icon ${c.iconClass}" style="width:18px;height:18px;font-size:10px;">${c.icon}</div>
+        ${c.name}
+        <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">${r.fromConnectors.length > 1 ? r.fromConnectors.length + ' connectors link here' : 'Pairs with ' + (connectorData[r.fromConnectors[0]]?.name || '')}</span>
+      </div>
+      <div class="reco-reason">${r.reasons[0]}</div>
+    </div>`;
+  }).join('');
+  return html;
+}
+
+// ─── EXPORT BRIEFING ──────────────────────────────────────
+function exportConnectorBriefing(key) {
+  const c = connectorData[key];
+  if (!c) return;
+  const issuesByCategory = {};
+  (c.knownIssues || []).forEach(i => {
+    const cat = i.category || 'General';
+    if (!issuesByCategory[cat]) issuesByCategory[cat] = [];
+    issuesByCategory[cat].push(i);
+  });
+
+  let text = `📋 ${c.name} — Connector Briefing\n`;
+  text += `${'═'.repeat(40)}\n\n`;
+  text += `What it does: ${c.whatItDoes}\n\n`;
+  text += `Useful for: ${c.usefulFor}\n\n`;
+  text += `Key Tables (${c.tables.length}):\n`;
+  c.tables.forEach(t => {
+    text += `  • ${t.name} — ${t.whatContains}\n`;
+    if (t.keyCallouts) text += `    ⚡ ${t.keyCallouts}\n`;
+  });
+  text += `\nKnown Issues (${c.knownIssues.length}):\n`;
+  Object.entries(issuesByCategory).forEach(([cat, issues]) => {
+    text += `\n  [${cat}]\n`;
+    issues.forEach(i => {
+      text += `  • ${i.title}\n`;
+      text += `    ${i.preview}\n`;
+    });
+  });
+  if (c.docsUrl) text += `\nDocs: ${c.docsUrl}\n`;
+  text += `\n— Generated by Fivetran Connector Scout v0.4.0`;
+  return text;
+}
+
+function exportScanBriefing() {
+  if (scannedConnectors.length === 0) return;
+  let text = `📡 Fivetran Dashboard Scan — Briefing\n`;
+  text += `${'═'.repeat(40)}\n`;
+  text += `Connectors detected: ${scannedConnectors.length}\n`;
+  text += `Date: ${new Date().toLocaleDateString()}\n\n`;
+
+  scannedConnectors.forEach(key => {
+    const c = connectorData[key];
+    if (!c) return;
+    text += `▸ ${c.name}\n`;
+    text += `  ${c.description}\n`;
+    text += `  Tables: ${c.tables.length} | Known Issues: ${(c.knownIssues || []).length}\n\n`;
+  });
+
+  const recos = getRecommendations(scannedConnectors);
+  if (recos.length > 0) {
+    text += `💡 Recommended Connectors to Add:\n`;
+    recos.forEach(r => {
+      const c = connectorData[r.key];
+      text += `  • ${c.name} — ${r.reasons[0]}\n`;
+    });
+  }
+  text += `\n— Generated by Fivetran Connector Scout v0.4.0`;
+  return text;
+}
 
 // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
 document.addEventListener('keydown', (e) => {
