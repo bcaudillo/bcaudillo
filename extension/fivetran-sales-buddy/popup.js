@@ -1298,6 +1298,14 @@ document.addEventListener('click', (e) => {
     case 'toggleDarkMode':
       toggleDarkMode();
       break;
+    case 'toggleRecoWhy':
+      { const whyEl = document.getElementById('reco-why-' + el.dataset.recoIdx);
+        if (whyEl) {
+          const open = whyEl.style.display !== 'none';
+          whyEl.style.display = open ? 'none' : 'block';
+          el.textContent = open ? 'Why add this? ▸' : 'Why add this? ▾';
+        } }
+      break;
     case 'exportBriefing':
       { const briefing = exportConnectorBriefing(key);
         if (briefing) copyToClipboard(briefing, el); }
@@ -1362,44 +1370,70 @@ function toggleDarkMode() {
 // ─── CONNECTOR RECOMMENDATIONS ──────────────────────────────────────
 const connectorRecommendations = {
   hubspot: [
-    { key: 'salesforce', reason: 'Blend CRM data — compare HubSpot marketing leads with Salesforce pipeline' },
-    { key: 'google_ads', reason: 'Attribute marketing spend to HubSpot leads and deals' },
-    { key: 'stripe', reason: 'Connect HubSpot deals to actual Stripe payments for revenue attribution' },
-    { key: 'facebook_ads', reason: 'Track Facebook ad performance alongside HubSpot contact acquisition' }
+    { key: 'salesforce', reason: 'Blend CRM data — compare HubSpot marketing leads with Salesforce pipeline',
+      why: 'Most companies using HubSpot for marketing also have a sales team in Salesforce. Without both connected, marketing can\'t prove which campaigns drive revenue and sales can\'t see which leads are marketing-qualified. Connecting both gives you a full funnel view from first touch to closed-won.' },
+    { key: 'google_ads', reason: 'Attribute marketing spend to HubSpot leads and deals',
+      why: 'HubSpot tracks leads but doesn\'t know what ad brought them in. Google Ads has the spend and click data but doesn\'t know what happened after the click. Connecting both lets the team calculate true cost-per-lead and cost-per-deal — the #1 question every CMO asks.' },
+    { key: 'stripe', reason: 'Connect HubSpot deals to actual Stripe payments for revenue attribution',
+      why: 'HubSpot says a deal is "closed-won" but that doesn\'t mean the customer actually paid. Stripe has the real payment data. Connecting both reveals the gap between booked revenue and collected revenue, helps track failed payments, and enables true customer lifetime value calculations.' },
+    { key: 'facebook_ads', reason: 'Track Facebook ad performance alongside HubSpot contact acquisition',
+      why: 'Facebook Ads drives awareness and leads, but without connecting it to HubSpot, the marketing team is optimizing on clicks and impressions instead of actual lead quality. This connection lets them see which Facebook campaigns produce leads that actually convert to customers.' }
   ],
   salesforce: [
-    { key: 'hubspot', reason: 'Combine Salesforce pipeline with HubSpot marketing engagement data' },
-    { key: 'stripe', reason: 'Match Salesforce opportunities to Stripe payments for closed-won validation' },
-    { key: 'netsuite', reason: 'Bridge sales pipeline to ERP financials for order-to-cash analytics' },
-    { key: 'linkedin_ads', reason: 'Tie LinkedIn ad engagement to Salesforce lead conversion' }
+    { key: 'hubspot', reason: 'Combine Salesforce pipeline with HubSpot marketing engagement data',
+      why: 'Sales reps in Salesforce don\'t see the marketing journey — which emails the prospect opened, which webinars they attended, which pages they visited. Connecting HubSpot gives sales context on buyer intent and helps prioritize the hottest leads based on actual engagement, not just lead score.' },
+    { key: 'stripe', reason: 'Match Salesforce opportunities to Stripe payments for closed-won validation',
+      why: 'Finance teams constantly question pipeline accuracy. By connecting Stripe payment data to Salesforce opportunities, you can validate that "closed-won" deals actually collected payment, identify revenue leakage, and build accurate ARR/MRR dashboards that finance trusts.' },
+    { key: 'netsuite', reason: 'Bridge sales pipeline to ERP financials for order-to-cash analytics',
+      why: 'Salesforce owns the front of the deal, NetSuite owns the back. Without connecting them, there\'s a black hole between "closed-won" and "invoice paid." This connection enables order-to-cash analytics, revenue recognition reporting, and helps identify bottlenecks where deals close but invoices stall.' },
+    { key: 'linkedin_ads', reason: 'Tie LinkedIn ad engagement to Salesforce lead conversion',
+      why: 'For B2B companies, LinkedIn is often the highest-quality ad channel. Connecting LinkedIn Ads to Salesforce lets the team see which LinkedIn campaigns, audiences, and creatives generate leads that actually close — not just leads that fill out a form and ghost.' }
   ],
   stripe: [
-    { key: 'hubspot', reason: 'Link payments to CRM contacts for customer lifetime value analysis' },
-    { key: 'salesforce', reason: 'Validate closed-won deals against actual Stripe revenue' },
-    { key: 'shopify', reason: 'Combine e-commerce orders with payment processing data' },
-    { key: 'netsuite', reason: 'Reconcile Stripe transactions with ERP accounting records' }
+    { key: 'hubspot', reason: 'Link payments to CRM contacts for customer lifetime value analysis',
+      why: 'Stripe knows who paid and how much, but it doesn\'t know the customer relationship context — their industry, company size, or how they were acquired. Connecting to HubSpot enables true CLV analysis segmented by acquisition channel, customer segment, and lifecycle stage.' },
+    { key: 'salesforce', reason: 'Validate closed-won deals against actual Stripe revenue',
+      why: 'Sales leaders need to know: are we actually collecting what we\'re booking? Connecting Stripe to Salesforce reveals the delta between pipeline and payments, tracks payment failures tied to specific accounts, and gives finance a single source of truth for revenue reporting.' },
+    { key: 'shopify', reason: 'Combine e-commerce orders with payment processing data',
+      why: 'Shopify tracks orders and products, Stripe tracks the actual money movement. Together you get a complete picture: which products have the highest refund rates, where payment failures are costing revenue, and how shipping and fulfillment timing affects payment success.' },
+    { key: 'netsuite', reason: 'Reconcile Stripe transactions with ERP accounting records',
+      why: 'Finance teams spend hours manually reconciling Stripe payouts with NetSuite journal entries. Automating this connection eliminates that manual work, ensures every Stripe fee and payout maps to the right GL account, and speeds up monthly close from weeks to days.' }
   ],
   shopify: [
-    { key: 'stripe', reason: 'Reconcile Shopify orders with Stripe payment processing' },
-    { key: 'google_ads', reason: 'Calculate true ROAS by connecting ad spend to Shopify revenue' },
-    { key: 'facebook_ads', reason: 'Track social ad performance to actual purchases' },
-    { key: 'hubspot', reason: 'Sync customer purchase data to CRM for retention marketing' }
+    { key: 'stripe', reason: 'Reconcile Shopify orders with Stripe payment processing',
+      why: 'Shopify shows an order was placed, but Stripe shows whether the payment actually cleared, what fees were charged, and if there were chargebacks. This connection is essential for accurate gross margin calculations and understanding the true cost of each transaction.' },
+    { key: 'google_ads', reason: 'Calculate true ROAS by connecting ad spend to Shopify revenue',
+      why: 'Google Ads shows clicks and cost, Shopify shows purchases and revenue. Without connecting them, the marketing team is flying blind on actual return on ad spend. This connection enables true ROAS by product, by campaign, and by customer segment — the metrics that drive profitable growth.' },
+    { key: 'facebook_ads', reason: 'Track social ad performance to actual purchases',
+      why: 'After iOS privacy changes, Facebook\'s own attribution is unreliable. Connecting Facebook Ads to Shopify via your warehouse gives you a server-side attribution model that\'s more accurate than pixel-based tracking. It\'s the only way to get trustworthy ROAS from Facebook in 2025+.' },
+    { key: 'hubspot', reason: 'Sync customer purchase data to CRM for retention marketing',
+      why: 'Most e-commerce brands treat every customer the same. Connecting Shopify purchase history to HubSpot enables segmented retention campaigns: VIP customers get different treatment than one-time buyers, lapsed customers get win-back sequences, and high-AOV customers get early access to new products.' }
   ],
   netsuite: [
-    { key: 'salesforce', reason: 'Bridge CRM pipeline to ERP financials for full order-to-cash visibility' },
-    { key: 'hubspot', reason: 'Connect marketing leads to ERP customer and revenue records' },
-    { key: 'stripe', reason: 'Reconcile online payments with NetSuite accounting' }
+    { key: 'salesforce', reason: 'Bridge CRM pipeline to ERP financials for full order-to-cash visibility',
+      why: 'CFOs want to see the full revenue journey: from pipeline to invoice to cash collection. Salesforce has the pipeline, NetSuite has the invoices and payments. Connecting both eliminates the manual spreadsheet reconciliation between sales and finance and gives leadership a real-time view of the business.' },
+    { key: 'hubspot', reason: 'Connect marketing leads to ERP customer and revenue records',
+      why: 'Marketing teams struggle to prove ROI because they can\'t connect their leads to actual revenue. By linking HubSpot campaigns to NetSuite customer records and transactions, marketing can finally answer: "Which campaigns brought in our most profitable customers?"' },
+    { key: 'stripe', reason: 'Reconcile online payments with NetSuite accounting',
+      why: 'Every Stripe charge, refund, and fee needs to land in the right NetSuite GL account. Doing this manually is error-prone and delays monthly close. This connection automates the reconciliation and gives the accounting team confidence that the books match reality.' }
   ],
   google_ads: [
-    { key: 'facebook_ads', reason: 'Cross-channel ad attribution — compare Google vs Facebook ROAS' },
-    { key: 'hubspot', reason: 'Attribute Google Ads clicks to CRM leads and deals' },
-    { key: 'salesforce', reason: 'Track ad spend through to closed-won revenue in Salesforce' },
-    { key: 'shopify', reason: 'Calculate true ROAS by matching ad clicks to purchases' }
+    { key: 'facebook_ads', reason: 'Cross-channel ad attribution — compare Google vs Facebook ROAS',
+      why: 'Every ad platform claims credit for conversions. By pulling both Google and Facebook data into the warehouse, the marketing team can build a unified attribution model that fairly distributes credit across channels and identifies which platform actually drives incremental revenue vs. just retargeting existing intent.' },
+    { key: 'hubspot', reason: 'Attribute Google Ads clicks to CRM leads and deals',
+      why: 'Google Ads optimizes for conversions, but a "conversion" might be a junk form fill. Connecting to HubSpot lets the team feed back actual lead quality — which keywords and campaigns produce SQLs, not just MQLs. Some teams even push this data back to Google to optimize for revenue, not clicks.' },
+    { key: 'salesforce', reason: 'Track ad spend through to closed-won revenue in Salesforce',
+      why: 'B2B sales cycles are long — a Google Ad click in January might not close until June. Without connecting Google Ads to Salesforce, the team has no idea which campaigns drive actual revenue. This connection enables true pipeline-based ROAS that accounts for the full sales cycle.' },
+    { key: 'shopify', reason: 'Calculate true ROAS by matching ad clicks to purchases',
+      why: 'Google\'s reported ROAS uses its own attribution model, which often overcounts. Pulling Google Ads and Shopify data into the warehouse lets the team calculate ROAS using their own attribution logic — first-touch, last-touch, or multi-touch — giving them numbers they can actually trust for budget decisions.' }
   ],
   facebook_ads: [
-    { key: 'google_ads', reason: 'Cross-channel comparison — unified view of ad performance' },
-    { key: 'hubspot', reason: 'Connect Facebook leads to CRM pipeline and engagement' },
-    { key: 'shopify', reason: 'Attribute Facebook ad spend to actual e-commerce revenue' }
+    { key: 'google_ads', reason: 'Cross-channel comparison — unified view of ad performance',
+      why: 'Facebook and Google both take credit for the same conversions. The only way to get an honest picture is to pull both into the warehouse and build a deduplicated attribution model. Teams that do this typically find they can shift 15-25% of budget from overcredited channels to undercredited ones.' },
+    { key: 'hubspot', reason: 'Connect Facebook leads to CRM pipeline and engagement',
+      why: 'Facebook Lead Ads generate form fills, but how many actually become customers? Connecting to HubSpot reveals the lead-to-customer conversion rate by campaign, audience, and creative — so the team stops optimizing for cheap leads and starts optimizing for leads that actually buy.' },
+    { key: 'shopify', reason: 'Attribute Facebook ad spend to actual e-commerce revenue',
+      why: 'Post-iOS 14, Facebook\'s pixel-based attribution underreports by 20-40%. Server-side attribution via the warehouse is the fix. Connecting Facebook Ads to Shopify through Fivetran gives e-commerce teams accurate ROAS they can make real budget decisions on.' }
   ]
 };
 
@@ -1412,10 +1446,11 @@ function getRecommendations(scannedKeys) {
       if (existing.has(r.key)) continue;
       if (!connectorData[r.key]) continue;
       if (!recoMap.has(r.key)) {
-        recoMap.set(r.key, { key: r.key, reasons: [r.reason], fromConnectors: [key] });
+        recoMap.set(r.key, { key: r.key, reasons: [r.reason], whys: [r.why], fromConnectors: [key] });
       } else {
         const entry = recoMap.get(r.key);
         entry.reasons.push(r.reason);
+        entry.whys.push(r.why);
         entry.fromConnectors.push(key);
       }
     }
@@ -1427,15 +1462,24 @@ function renderRecommendations(scannedKeys) {
   const recos = getRecommendations(scannedKeys);
   if (recos.length === 0) return '';
   let html = `<div class="reco-label">💡 Recommended Connectors</div>`;
-  html += recos.map(r => {
+  html += recos.map((r, idx) => {
     const c = connectorData[r.key];
-    return `<div class="reco-card" data-action="showConnectorDetails" data-key="${r.key}">
-      <div class="reco-name" style="display:flex;align-items:center;gap:6px;">
+    const pairLabel = r.fromConnectors.length > 1
+      ? r.fromConnectors.length + ' connectors link here'
+      : 'Pairs with ' + (connectorData[r.fromConnectors[0]]?.name || '');
+    const whyText = r.whys.filter(Boolean).join(' ');
+    return `<div class="reco-card">
+      <div class="reco-name" data-action="showConnectorDetails" data-key="${r.key}" style="display:flex;align-items:center;gap:6px;">
         <div class="connector-icon ${c.iconClass}" style="width:18px;height:18px;font-size:10px;">${c.icon}</div>
         ${c.name}
-        <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">${r.fromConnectors.length > 1 ? r.fromConnectors.length + ' connectors link here' : 'Pairs with ' + (connectorData[r.fromConnectors[0]]?.name || '')}</span>
+        <span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--ft-blue);background:var(--ft-blue-light);padding:2px 8px;border-radius:4px;">${pairLabel}</span>
       </div>
       <div class="reco-reason">${r.reasons[0]}</div>
+      ${whyText ? `<div class="reco-why" data-action="toggleRecoWhy" data-reco-idx="${idx}">Why add this? ▸</div>
+      <div class="reco-why-detail" id="reco-why-${idx}" style="display:none;">
+        <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.6;">${whyText}</div>
+        <div style="margin-top:6px;text-align:right;"><span class="copy-btn" data-action="copyText" data-text="${whyText.replace(/"/g, '&quot;')}">Copy pitch</span></div>
+      </div>` : ''}
     </div>`;
   }).join('');
   return html;

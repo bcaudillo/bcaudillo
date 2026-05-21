@@ -366,5 +366,9 @@
     .reco-card:hover { border-color: var(--ft-blue); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(48,107,234,0.12); }
     .dark-mode .reco-card { background: linear-gradient(135deg, #1A2744 0%, #1D2D50 100%); }
     .reco-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ft-blue); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-    .reco-name { font-weight: 700; font-size: 13px; color: var(--ft-text); margin-bottom: 3px; }
+    .reco-name { font-weight: 700; font-size: 13px; color: var(--ft-text); margin-bottom: 3px; cursor: pointer; }
     .reco-reason { font-size: 11px; color: var(--ft-text-mid); line-height: 1.5; }
+    .reco-why { font-size: 11px; font-weight: 600; color: var(--ft-blue); cursor: pointer; margin-top: 6px; padding: 4px 0; }
+    .reco-why:hover { text-decoration: underline; }
+    .reco-why-detail { margin-top: 8px; padding: 10px 12px; background: rgba(48,107,234,0.04); border-radius: 8px; border: 1px solid var(--ft-border); }
+    .dark-mode .reco-why-detail { background: rgba(91,141,239,0.08); }
