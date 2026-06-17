@@ -217,7 +217,7 @@ const glossaryData = [
   { term: 'Self-Hosted (HVR)', simple: 'Fully on-premises — customer controls everything', detailed: 'Uses Fivetran\'s HVR solution for database and file replication. Hosted entirely on customer infrastructure. Complete control over orchestration, configuration, credentials, and code deployment. Distributed architecture for large-scale environments.', whyMatters: 'For enterprises with the strictest compliance and data sovereignty requirements who need full control. Most complex to set up and maintain.', example: 'Large bank needs to replicate Oracle databases with zero data leaving their data center. They deploy HVR on-premises.', category: 'Deployment' },
   { term: 'Data Plane vs Control Plane', simple: 'Where data moves vs where you manage it', detailed: 'Data Plane: where actual data movement occurs between sources and destinations. Control Plane: manages configuration, monitoring, orchestration, security settings. In SaaS, both are in Fivetran\'s cloud. In Hybrid, data plane is local and control plane is Fivetran\'s cloud.', whyMatters: 'This is the key differentiator between deployment models. Hybrid = your data plane, Fivetran\'s control plane. Important for security conversations.', example: 'A Hybrid Deployment customer: their data never leaves their VPC (data plane), but they configure and monitor everything via fivetran.com (control plane).', category: 'Deployment' },
   { term: 'Transformations', simple: 'Post-load data modeling using dbt or SQL in the destination', detailed: 'Fivetran loads raw data (E+L), then supports transformations in the destination (T). Uses dbt Core-compatible data models. Fivetran orchestrates transformation runs. Charged per successful model run (5,000 free/month on Free plan).', whyMatters: 'Fivetran provides pre-built dbt packages for popular connectors (HubSpot, Salesforce, Stripe). Customers can also write custom SQL/dbt models.', example: 'Fivetran loads raw HubSpot data. The dbt HubSpot package transforms it into analytics-ready tables like hubspot__contacts with enriched metrics.', category: 'Core' },
-  { term: 'Activations', simple: 'Reverse ETL — push warehouse data back to business tools', detailed: 'Move data from your warehouse/lake back to operational tools like Salesforce, HubSpot, Braze. Priced on MAR separately from connections. Each activation has its own cost curve and a 14-day free trial.', whyMatters: 'Enables the "data loop" — sync data in with connectors, model it, then push insights back to the tools teams use daily.', example: 'Customer builds a lead score model in Snowflake, then uses Activations to push scores back to Salesforce Contact records.', category: 'Core' },
+  { term: 'Activations', simple: 'Reverse ETL — push warehouse data back to business tools (powered by Census acquisition)', detailed: 'Move data from your warehouse/lake back to operational tools like Salesforce, HubSpot, Braze. Powered by Fivetran\'s acquisition of Census (2024), the leading Reverse ETL platform. Priced on MAR separately from connections. Each activation has its own cost curve and a 14-day free trial. Census is NOT a competitor — it is now native Fivetran functionality.', whyMatters: 'Enables the "data loop" — sync data in with connectors, model it, then push insights back to the tools teams use daily. With Census integrated, Fivetran now owns the full data movement lifecycle: sources → warehouse → destinations.', example: 'Customer builds a lead score model in Snowflake, then uses Activations to push scores back to Salesforce Contact records.', category: 'Core' },
 
   // Data Ecosystem
   { term: 'ODI (Open Data Infrastructure)', simple: 'Fivetran\'s vision for a modern data stack built on open standards, not vendor lock-in', detailed: 'Open Data Infrastructure is a concept Fivetran is championing — the idea that the modern data stack should be built on open, interoperable standards rather than proprietary, locked-in platforms. Key principles: open table formats (Apache Iceberg, Delta Lake), open APIs for integration, portable data that isn\'t trapped in a single vendor\'s ecosystem, and the freedom to swap components (warehouse, transformation tool, BI layer) without rebuilding pipelines. Fivetran positions itself as the open, vendor-neutral data movement layer that works with any destination and any transformation tool.', whyMatters: 'ODI is Fivetran\'s strategic narrative. It positions Fivetran against proprietary all-in-one platforms that lock customers into a single ecosystem. When talking to prospects evaluating end-to-end platforms (like Databricks, Informatica, or legacy ETL suites), ODI is the argument for best-of-breed, open, interoperable tools.', example: 'Prospect says "we\'re considering an all-in-one platform from Vendor X." The ODI pitch: "Your data should be portable. Fivetran delivers data to any destination using open formats like Iceberg — you\'re never locked into one vendor. Swap your warehouse, your BI tool, or your transformation layer without touching your pipelines."', category: 'Core' },
@@ -230,7 +230,7 @@ const glossaryData = [
   { term: 'Medallion Architecture', simple: 'A data organization pattern: Bronze (raw) → Silver (cleaned) → Gold (ready to use)', detailed: 'A layered data modeling pattern common in Databricks and modern warehouses. Bronze: raw data as Fivetran loads it. Silver: cleaned, deduplicated, joined data (usually dbt models). Gold: business-ready aggregations and metrics for dashboards and reporting. Fivetran always feeds the Bronze layer.', whyMatters: 'When customers talk about Bronze/Silver/Gold layers, they\'re describing this pattern. Fivetran\'s role is clear: we deliver the Bronze layer reliably. dbt handles Silver and Gold.', example: 'Bronze layer: raw Salesforce OPPORTUNITY table from Fivetran. Silver: cleaned opps with NULL fields handled, currency normalized. Gold: win_rate_by_rep dashboard-ready model.', category: 'Data Ecosystem' },
   { term: 'Orchestration', simple: 'Scheduling and coordinating when pipelines run and in what order', detailed: 'Orchestration tools (Airflow, Prefect, Dagster, dbt Cloud) manage the sequence and timing of data pipeline steps. Fivetran handles orchestration for its own syncs — you set a frequency and it runs. For complex multi-step pipelines (sync → transform → activate), customers may use orchestration tools to coordinate Fivetran alongside other tools.', whyMatters: 'Prospects may already use Airflow or Prefect. Fivetran has API and webhook hooks that work with any orchestration tool. For many customers, Fivetran\'s built-in scheduling is sufficient.', example: 'Customer uses Airflow: trigger Fivetran sync via API, wait for completion, then trigger dbt run, then send Slack notification. Fivetran is a node in their Airflow DAG.', category: 'Data Ecosystem' },
   { term: 'Data Pipeline', simple: 'The end-to-end flow of data from source to destination', detailed: 'A data pipeline is the full chain: source system → extraction → transformation → loading → destination. Fivetran manages the extraction and loading steps (EL). The pipeline also includes the transformation step (T), typically handled by dbt or SQL in the destination.', whyMatters: 'When customers say "our data pipeline is broken," they may mean the Fivetran sync failed, or a downstream transformation broke, or the destination has an issue. Understanding the full chain helps narrow down where the problem is.', example: 'Salesforce → Fivetran (extract + load) → Snowflake → dbt (transform) → Tableau (visualize). If Tableau shows wrong numbers, the issue could be at any step in the pipeline.', category: 'Data Ecosystem' },
-  { term: 'Reverse ETL', simple: 'Moving data from your warehouse back into business tools', detailed: 'The opposite of what connectors do. Instead of pulling data into a warehouse, Reverse ETL pushes data from the warehouse back to operational tools like Salesforce, HubSpot, or Marketo. Fivetran calls this "Activations." Common use cases: syncing lead scores to CRM, pushing cohort labels to marketing tools, or updating customer health scores.', whyMatters: 'A growing need. When a customer has already built models in their warehouse and wants to operationalize them, Activations is the answer. Priced separately from connections.', example: 'Customer built an ML churn score in BigQuery. They use Activations to push that score into HubSpot on every contact record, so CS can see it without logging into BigQuery.', category: 'Data Ecosystem' },
+  { term: 'Reverse ETL', simple: 'Moving data from your warehouse back into business tools — now native to Fivetran via Census acquisition', detailed: 'The opposite of what connectors do. Instead of pulling data into a warehouse, Reverse ETL pushes data from the warehouse back to operational tools like Salesforce, HubSpot, or Marketo. Fivetran acquired Census (the market-leading Reverse ETL platform) and rebranded it as "Activations." Census is NOT a competitor — it\'s now part of Fivetran. Common use cases: syncing lead scores to CRM, pushing cohort labels to marketing tools, or updating customer health scores.', whyMatters: 'A growing need. When a customer has already built models in their warehouse and wants to operationalize them, Activations is the answer. With Census now integrated, Fivetran owns the complete data loop. Priced separately from connections.', example: 'Customer built an ML churn score in BigQuery. They use Activations to push that score into HubSpot on every contact record, so CS can see it without logging into BigQuery.', category: 'Data Ecosystem' },
   { term: 'API Connector', simple: 'Fivetran pulls data from a cloud app using its published API', detailed: 'The most common connector type. Fivetran makes authenticated API calls to the source system on a schedule, requests records, paginates through results, and loads them into the destination. Rate limits, authentication, and schema are all managed by Fivetran. Examples: HubSpot, Salesforce, Stripe, Shopify.', whyMatters: 'The bread and butter of Fivetran. Most SaaS connectors work this way. Common issues: API rate limits slowing syncs, token expiration, and API version changes.', example: 'Fivetran calls HubSpot\'s Contacts API every 15 minutes, fetching contacts updated since the last cursor. New and changed contacts are upserted to Snowflake.', category: 'Technical' },
   { term: 'Webhook Connector', simple: 'The source pushes data to Fivetran in real-time as events happen', detailed: 'Instead of Fivetran polling the source, the source sends data to Fivetran whenever an event occurs. Near real-time data delivery. Common for: payments (Stripe), e-commerce (Shopify), and custom apps. Requires the customer to configure the webhook endpoint in the source system.', whyMatters: 'Much faster than polling — data arrives seconds after the event. Useful when customers need sub-minute freshness. Fivetran also has a generic Webhooks connector for custom event streams.', example: 'Stripe sends a webhook to Fivetran every time a payment succeeds or fails. Events land in Snowflake within seconds — no polling delay.', category: 'Technical' },
   { term: 'RBAC', simple: 'Role-Based Access Control — who can see and change what in Fivetran', detailed: 'Fivetran\'s permission system lets admins control who can view connections, modify schemas, access billing, or manage users. Standard plan: basic RBAC. Enterprise: custom roles and granular permissions. Common roles: Account Administrator, Destination Administrator, Analyst.', whyMatters: 'Enterprise customers require RBAC for security compliance. The ability to give read-only access to analysts vs full access to admins is often a requirement.', example: 'Company gives their analytics team "Analyst" role — they can view schemas and run queries but can\'t change connector settings or see credentials.', category: 'Core' },
@@ -447,9 +447,6 @@ function switchTab(tab, btn) {
   }
   if (tab === 'search') {
     renderRecentItems();
-  }
-  if (tab === 'calculator') {
-    initMarCalculator();
   }
 }
 
@@ -1314,12 +1311,6 @@ document.addEventListener('click', (e) => {
       { const scanBrief = exportScanBriefing();
         if (scanBrief) copyToClipboard(scanBrief, el); }
       break;
-    case 'addMarEntry':
-      addMarEntry();
-      break;
-    case 'removeMarEntry':
-      removeMarEntry(idx);
-      break;
     case 'closeDetails':
       closeDetails();
       break;
@@ -1560,77 +1551,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ─── MAR CALCULATOR ──────────────────────────────────────
-let marEntries = [{ connector: '', rows: '' }];
-
-function renderMarEntries() {
-  const el = document.getElementById('mar-entries');
-  if (!el) return;
-  el.innerHTML = marEntries.map((entry, idx) => `
-    <div class="mar-entry" data-idx="${idx}">
-      <input type="text" class="mar-connector-input" placeholder="Connector name" value="${entry.connector}" data-action-input="marConnector" data-idx="${idx}" />
-      <input type="number" class="mar-rows-input" placeholder="Rows/mo" value="${entry.rows}" data-action-input="marRows" data-idx="${idx}" />
-      ${marEntries.length > 1 ? `<span class="mar-remove" data-action="removeMarEntry" data-idx="${idx}">×</span>` : ''}
-    </div>
-  `).join('');
-  updateMarSummary();
-}
-
-function updateMarSummary() {
-  const el = document.getElementById('mar-summary');
-  if (!el) return;
-  const totalMAR = marEntries.reduce((sum, e) => sum + (parseInt(e.rows) || 0), 0);
-  const connectionCount = marEntries.filter(e => e.connector && e.rows).length;
-
-  if (totalMAR === 0) {
-    el.innerHTML = `<div class="mar-summary-box"><div style="font-size:12px;color:var(--ft-text-light);">Enter row counts to see MAR estimate</div></div>`;
-    return;
-  }
-
-  const basePerConn = 5;
-  const baseCost = connectionCount * basePerConn;
-  let tier = 'Free';
-  let estCost = '';
-  if (totalMAR <= 500000) { tier = 'Free Tier'; estCost = '$0/mo (under 500k MAR)'; }
-  else if (totalMAR <= 2000000) { tier = 'Standard'; estCost = `~$${(baseCost + Math.ceil(totalMAR / 1000) * 0.5).toLocaleString()}/mo est.`; }
-  else if (totalMAR <= 10000000) { tier = 'Enterprise'; estCost = `~$${(baseCost + Math.ceil(totalMAR / 1000) * 0.35).toLocaleString()}/mo est.`; }
-  else { tier = 'Enterprise+'; estCost = 'Custom pricing — contact sales'; }
-
-  el.innerHTML = `<div class="mar-summary-box">
-    <div class="mar-summary-row"><span>Total MAR</span><span class="mar-total">${totalMAR.toLocaleString()}</span></div>
-    <div class="mar-summary-row"><span>Connections</span><span>${connectionCount}</span></div>
-    <div class="mar-summary-row"><span>Suggested Tier</span><span style="font-weight:700;color:var(--ft-blue);">${tier}</span></div>
-    <div class="mar-summary-row"><span>Est. Cost</span><span style="font-weight:700;">${estCost}</span></div>
-    <div style="margin-top:8px;font-size:10px;color:var(--ft-text-light);line-height:1.4;">Rough estimate only. Actual pricing depends on plan, volume discounts, and contract terms. Initial historical syncs are free MAR.</div>
-  </div>`;
-}
-
-function addMarEntry() {
-  marEntries.push({ connector: '', rows: '' });
-  renderMarEntries();
-}
-
-function removeMarEntry(idx) {
-  marEntries.splice(idx, 1);
-  renderMarEntries();
-}
-
-function initMarCalculator() {
-  const container = document.getElementById('mar-entries');
-  if (!container) return;
-  renderMarEntries();
-
-  container.addEventListener('input', (e) => {
-    const idx = parseInt(e.target.dataset.idx);
-    if (isNaN(idx)) return;
-    if (e.target.classList.contains('mar-connector-input')) {
-      marEntries[idx].connector = e.target.value;
-    } else if (e.target.classList.contains('mar-rows-input')) {
-      marEntries[idx].rows = e.target.value;
-    }
-    updateMarSummary();
-  });
-}
 
 // ─── QUICK STATS ──────────────────────────────────────
 function renderQuickStats() {
