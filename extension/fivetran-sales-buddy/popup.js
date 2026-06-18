@@ -2598,6 +2598,122 @@ function setupConnectorAutocomplete() {
   });
 }
 
+// Fivetran-specific error patterns — maps JSON event fields and common error
+// strings to actionable diagnosis. These fire BEFORE HTTP code matching so
+// real Fivetran errors get accurate guidance instead of a misleading code match.
+const fivetranErrorPatterns = [
+  { patterns: ['re_authorize_oauth', 'invalid_grant', 'expired access/refresh token', 'token has been expired', 'refresh token expired'],
+    title: 'OAuth Token Expired — Re-Authorization Required',
+    category: 'Authentication',
+    diagnosis: 'The OAuth access/refresh token has expired or been revoked. This happens when: the authenticating user changed their password, an admin revoked the integration, the token\'s TTL expired, or a security policy forced rotation.',
+    steps: [
+      'Go to the Fivetran connector → Setup tab → click Re-Authorize',
+      'Use a service account (not a personal account) to prevent this recurring',
+      'If re-auth fails, the source system may have revoked the app — check the source\'s Connected Apps or Integrations settings',
+      'Set up Fivetran sync failure alerts so you catch this immediately next time'
+    ]
+  },
+  { patterns: ['failure_with_task', 'task_type', 'tasktype'],
+    title: 'Sync Failed With a Pending Task',
+    category: 'Sync Failure',
+    diagnosis: 'Fivetran detected a problem that requires manual action (a "task"). The sync will not resume until the task is resolved. Common tasks: Re-Authorize OAuth, Update Credentials, Re-Sync Table, Grant Permissions.',
+    steps: [
+      'Check the Fivetran dashboard for the connector — there will be an orange/red task banner',
+      'The taskType field in the error tells you what\'s needed (e.g., Re_Authorize_OAuth, Update_Service_Account)',
+      'Complete the task in the Fivetran UI, then trigger a manual sync to verify',
+      'If the task keeps recurring, investigate the root cause (token expiry, credential rotation, permission change)'
+    ]
+  },
+  { patterns: ['invalid_client', 'client_id', 'client_secret'],
+    title: 'OAuth Client Credentials Invalid',
+    category: 'Authentication',
+    diagnosis: 'The OAuth client ID or client secret is wrong or has been regenerated in the source system. This is different from a token expiry — the entire OAuth app configuration is broken.',
+    steps: [
+      'Check the source system\'s OAuth/Connected App settings for the correct client ID and secret',
+      'If the app was deleted and recreated, the old client credentials are permanently invalid',
+      'Re-create the connection in Fivetran with the new client credentials',
+      'This is rare — it usually means someone deleted the OAuth app in the source system'
+    ]
+  },
+  { patterns: ['insufficient_permissions', 'permission denied', 'access denied', 'not authorized', 'insufficient privileges', 'requires_admin'],
+    title: 'Insufficient Permissions',
+    category: 'Permissions',
+    diagnosis: 'The authenticated user or service account doesn\'t have the required permissions in the source system. The credentials work (login succeeds) but the account can\'t access the data Fivetran needs.',
+    steps: [
+      'Check what role/permissions the Fivetran integration user has in the source system',
+      'Common fix: grant Admin or read-all-data permissions to the integration user',
+      'For databases: check GRANT statements, schema access, and table-level SELECT permissions',
+      'For APIs: verify the OAuth scopes include read access to all needed data objects'
+    ]
+  },
+  { patterns: ['connection_refused', 'connection timed out', 'could not connect', 'unable to connect', 'network error', 'host not found', 'dns resolution'],
+    title: 'Network Connection Failed',
+    category: 'Network',
+    diagnosis: 'Fivetran cannot reach the source system. This is a network/firewall issue, not a credentials issue. The connection is blocked before authentication can even happen.',
+    steps: [
+      'For databases: verify the host is reachable, check firewall rules and security groups, confirm Fivetran IPs are whitelisted',
+      'For cloud databases (RDS, Azure SQL): check if the database is publicly accessible or if an SSH tunnel is needed',
+      'If it was working before: check if the source\'s IP allowlist changed, or if the database was paused/stopped',
+      'For VPC-hosted sources: ensure the SSH tunnel bastion is running and accessible'
+    ]
+  },
+  { patterns: ['rate limit', 'rate_limit', 'too many requests', 'throttl', 'quota exceeded', 'api limit'],
+    title: 'API Rate Limit Hit',
+    category: 'Rate Limiting',
+    diagnosis: 'The source system is throttling Fivetran\'s API requests. This is usually temporary and self-resolving. Other integrations (Zapier, internal scripts, other tools) sharing the same API may be competing for the rate limit.',
+    steps: [
+      'Usually self-resolving — Fivetran automatically retries with backoff',
+      'Ask the customer: "Do you have other tools hitting this API?" (Zapier, custom scripts, other ETL tools)',
+      'If persistent: reduce sync frequency or disable unnecessary tables to lower API call volume',
+      'For severe cases: the customer may need to request a rate limit increase from the source provider'
+    ]
+  },
+  { patterns: ['schema_change', 'column_type_change', 'table_not_found', 'column not found', 'relation does not exist', 'unknown column'],
+    title: 'Schema Change Detected',
+    category: 'Schema',
+    diagnosis: 'The source system\'s schema changed — a table was renamed/deleted, a column was added/removed, or a column type changed. Fivetran detected the mismatch between the expected and actual schema.',
+    steps: [
+      'Check the Fivetran connector\'s Schema tab for any warnings or mismatches',
+      'If a table was deleted in the source, disable it in Fivetran\'s schema settings',
+      'If a column type changed, Fivetran may need to re-sync the affected table',
+      'Ask the customer: "Did anyone change the database schema or rename objects recently?"'
+    ]
+  },
+  { patterns: ['ssl', 'certificate', 'tls', 'handshake', 'cert verify'],
+    title: 'SSL/TLS Certificate Error',
+    category: 'Network',
+    diagnosis: 'The SSL/TLS connection failed. The source system\'s certificate may be expired, self-signed, or the SSL configuration is incompatible. Common with self-hosted databases and on-premise systems.',
+    steps: [
+      'Check if the source uses a self-signed certificate — Fivetran may need SSL verification disabled',
+      'For Heroku Postgres: use sslmode=require (not verify-full) since Heroku uses rotating self-signed certs',
+      'For on-premise databases: ensure the certificate is not expired and the CA chain is complete',
+      'If SSL was recently changed on the source, update the Fivetran connection settings to match'
+    ]
+  },
+  { patterns: ['replication slot', 'wal', 'logical replication', 'pg_create_logical'],
+    title: 'Database Replication Slot Issue',
+    category: 'Database',
+    diagnosis: 'The logical replication slot (PostgreSQL/Aurora) has an issue — it may be missing, full, or the database needs WAL configuration. This affects CDC-based sync for PostgreSQL-family databases.',
+    steps: [
+      'Check if the replication slot exists: SELECT * FROM pg_replication_slots',
+      'If the slot was dropped: re-create it and trigger a re-sync in Fivetran',
+      'If WAL is filling up: the connector may have been paused too long — check replication lag',
+      'Verify wal_level = logical in the PostgreSQL config (or rds.logical_replication = 1 for RDS/Aurora)'
+    ]
+  },
+  { patterns: ['binlog', 'binary log', 'gtid', 'server_id'],
+    title: 'MySQL Binary Log Configuration Issue',
+    category: 'Database',
+    diagnosis: 'The MySQL/MariaDB/Aurora binary log is not configured correctly for Fivetran\'s CDC sync. This requires specific server settings: binlog_format = ROW, binlog_row_image = FULL, and sufficient binlog retention.',
+    steps: [
+      'Verify binlog is enabled: SHOW VARIABLES LIKE "log_bin"',
+      'Check format: SHOW VARIABLES LIKE "binlog_format" — must be ROW',
+      'Check retention: binlog files may have expired if retention is too short (set to at least 3 days)',
+      'For RDS/Aurora: use parameter groups to set these values and reboot the instance'
+    ]
+  }
+];
+
 function analyzeError() {
   const input = document.getElementById('error-paste-input');
   const text = (input?.value || '').trim();
@@ -2612,41 +2728,81 @@ function analyzeError() {
   const errLower = text.toLowerCase();
   let html = '';
 
-  // 1. Match against HTTP error codes in troubleshootingData.
-  const matchedCodes = [];
-  for (let i = 0; i < troubleshootingData.length; i++) {
-    const ts = troubleshootingData[i];
-    const code = (ts.errorCode || '').toString();
-    if (code && errLower.includes(code)) {
-      matchedCodes.push({ idx: i, ...ts });
-    }
-  }
-
-  if (matchedCodes.length === 0) {
-    for (let i = 0; i < troubleshootingData.length; i++) {
-      const ts = troubleshootingData[i];
-      const keywords = (ts.title || '').toLowerCase().split(/[\s–-]+/).filter(w => w.length > 4);
-      if (keywords.some(w => errLower.includes(w))) {
-        matchedCodes.push({ idx: i, ...ts });
+  // Try to extract connector type from JSON payload
+  let detectedConnectorType = selectedKey;
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.connector_type && !detectedConnectorType) {
+        detectedConnectorType = parsed.connector_type;
       }
     }
+  } catch (e) { /* not valid JSON, that's fine */ }
+
+  // 1. Match against Fivetran-specific error patterns first — these are more
+  //    accurate than HTTP code matching for real Fivetran error payloads.
+  const fivetranMatches = [];
+  for (const pattern of fivetranErrorPatterns) {
+    if (pattern.patterns.some(p => errLower.includes(p))) {
+      fivetranMatches.push(pattern);
+    }
   }
 
-  if (matchedCodes.length > 0) {
-    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Error Code Match</div>`;
-    html += matchedCodes.map(mc => `<div style="padding:10px 12px;margin-bottom:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${mc.idx}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <span style="font-size:14px;font-weight:800;color:#92400e;">${mc.errorCode}</span>
-        <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${mc.title}</span>
+  if (fivetranMatches.length > 0) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Fivetran Error Analysis</div>`;
+    html += fivetranMatches.map(fm => `<div style="padding:12px;margin-bottom:8px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:10px;font-weight:700;color:#fff;background:#D97706;padding:2px 8px;border-radius:4px;">${fm.category}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${fm.title}</span>
       </div>
-      <div style="font-size:11px;color:var(--ft-text-mid);">${mc.diagnosis?.substring(0, 150) || mc.preview}...</div>
-      <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View full troubleshooting guide →</div>
+      <div style="font-size:12px;color:var(--ft-text-mid);line-height:1.6;margin-bottom:8px;">${fm.diagnosis}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--ft-text-dark);margin-bottom:4px;">Steps to resolve:</div>
+      <ol style="font-size:11px;color:var(--ft-text-mid);line-height:1.8;margin:0;padding-left:16px;">
+        ${fm.steps.map(s => `<li>${s}</li>`).join('')}
+      </ol>
     </div>`).join('');
   }
 
-  // 2. If a connector is selected, search its known issues for keyword matches.
-  if (selectedKey && connectorData[selectedKey]?.knownIssues) {
-    const c = connectorData[selectedKey];
+  // 2. Match against HTTP error codes in troubleshootingData (skip if Fivetran
+  //    patterns already matched to avoid misleading code matches).
+  if (fivetranMatches.length === 0) {
+    const matchedCodes = [];
+    for (let i = 0; i < troubleshootingData.length; i++) {
+      const ts = troubleshootingData[i];
+      const code = (ts.errorCode || '').toString();
+      if (code && errLower.includes(code)) {
+        matchedCodes.push({ idx: i, ...ts });
+      }
+    }
+
+    if (matchedCodes.length === 0) {
+      for (let i = 0; i < troubleshootingData.length; i++) {
+        const ts = troubleshootingData[i];
+        const keywords = (ts.title || '').toLowerCase().split(/[\s–-]+/).filter(w => w.length > 4);
+        if (keywords.some(w => errLower.includes(w))) {
+          matchedCodes.push({ idx: i, ...ts });
+        }
+      }
+    }
+
+    if (matchedCodes.length > 0) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin-bottom:8px;">Error Code Match</div>`;
+      html += matchedCodes.map(mc => `<div style="padding:10px 12px;margin-bottom:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;cursor:pointer;" data-action="showTroubleshootingDetails" data-idx="${mc.idx}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:14px;font-weight:800;color:#92400e;">${mc.errorCode}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--ft-text-dark);">${mc.title}</span>
+        </div>
+        <div style="font-size:11px;color:var(--ft-text-mid);">${mc.diagnosis?.substring(0, 150) || mc.preview}...</div>
+        <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View full troubleshooting guide →</div>
+      </div>`).join('');
+    }
+  }
+
+  // 3. If a connector is detected or selected, search its known issues.
+  const issueKey = detectedConnectorType || selectedKey;
+  if (issueKey && connectorData[issueKey]?.knownIssues) {
+    const c = connectorData[issueKey];
     const errWords = errLower.split(/\s+/).filter(w => w.length > 3);
     const scored = c.knownIssues.map((issue, idx) => {
       const fields = [issue.title, issue.preview, issue.rootCause, issue.resolution].join(' ').toLowerCase();
@@ -2657,7 +2813,7 @@ function analyzeError() {
 
     if (scored.length > 0) {
       html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ft-text-light);margin:12px 0 8px;">${c.name} Known Issues</div>`;
-      html += scored.map(({ issue, idx }) => `<div style="padding:10px 12px;margin-bottom:8px;background:#F0F4FF;border:1px solid #C7D7FE;border-radius:8px;cursor:pointer;" data-action="showKnownIssueDetails" data-key="${selectedKey}" data-idx="${idx}">
+      html += scored.map(({ issue, idx }) => `<div style="padding:10px 12px;margin-bottom:8px;background:#F0F4FF;border:1px solid #C7D7FE;border-radius:8px;cursor:pointer;" data-action="showKnownIssueDetails" data-key="${issueKey}" data-idx="${idx}">
         <div style="font-weight:700;font-size:12px;color:var(--ft-text-dark);margin-bottom:4px;">${issue.title}</div>
         <div style="font-size:11px;color:var(--ft-text-mid);">${issue.preview}</div>
         <div style="font-size:11px;color:var(--ft-blue);font-weight:600;margin-top:4px;">View details →</div>
