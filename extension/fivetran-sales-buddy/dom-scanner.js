@@ -41,118 +41,113 @@
   }
 
   // ─── CONNECTIONS LIST SCANNER ──────────────────────────────
-  // Scans all source-type spans on the page (span.ndnOq), deduplicates by
-  // connector name, and returns one entry per unique connector type. This
-  // means 5 Google Sheets connections → 1 "Google Sheets" card.
-  //
-  // For large accounts (830+ connectors), the Fivetran dashboard uses
-  // virtualized scrolling — only visible rows are in the DOM. We auto-scroll
-  // the page to force all rows to render, collecting connector types as we go.
+  // Detects connector types from the Fivetran dashboard table by finding
+  // the "Source type" column structurally (by header position), so it works
+  // regardless of CSS class names or connector catalog changes.
 
-  const KNOWN_CONNECTOR_NAMES = new Set([
-    'HubSpot', 'Salesforce', 'Stripe', 'Slack', 'GitHub', 'Jira',
-    'PagerDuty', 'Tempo', 'incident.io', 'Recurly', 'LaunchDarkly',
-    'Datadog', 'Marketo', 'Zendesk', 'Intercom', 'Asana', 'Shopify',
-    'Google Analytics', 'Google Analytics 4', 'Google Ads', 'Facebook Ads',
-    'LinkedIn Ads', 'Snowflake', 'BigQuery', 'Redshift', 'PostgreSQL',
-    'MySQL', 'MongoDB', 'NetSuite', 'QuickBooks', 'Xero', 'Braze',
-    'Segment', 'Amplitude', 'Mixpanel', 'Twilio', 'SendGrid', 'Zuora',
-    'Chargebee', 'Workday', 'ServiceNow', 'Confluence', 'Bamboo HR',
-    'Greenhouse', 'Lever', 'Fivetran Platform', 'Connector SDK',
-    'Google Sheets', 'Airtable', 'Monday.com', 'Oracle', 'SAP',
-    'Dynamics 365', 'Freshdesk', 'Freshsales', 'Pipedrive', 'Close',
-    'Outreach', 'SalesLoft', 'Gong', 'Apollo', 'ZoomInfo', 'Clearbit',
-    'FullStory', 'Heap', 'Adobe Analytics', 'Pardot', 'Mailchimp',
-    'Klaviyo', 'Brevo', 'ActiveCampaign', 'Customer.io', 'SQL Server',
-    'Aurora', 'MariaDB', 'Cosmos DB', 'DynamoDB', 'Firebase',
-    'Google Cloud Storage', 'Amazon S3', 'Azure Blob Storage',
-    'Webhooks', 'Iterable', 'AppsFlyer', 'Adjust', 'Branch',
-    'Snapchat Ads', 'TikTok Ads', 'Pinterest Ads', 'Twitter Ads',
-    'Google Search Console', 'Google Play', 'App Store Connect',
-    'Coupa', 'Netsuite SuiteAnalytics', 'Workato', 'Gainsight',
-    'ChurnZero', 'Totango', 'Pendo', 'WalkMe', 'Appcues',
-    'Looker', 'Tableau', 'Power BI', 'Databricks', 'Census',
-    'Fivetran Log', 'Notion', 'ClickUp', 'Linear', 'Shortcut',
-    'Front', 'Drift', 'Qualified', 'Calendly', 'Zoom',
-    'DocuSign', 'PandaDoc', 'Conga', 'Box', 'Dropbox',
-    'OneDrive', 'SharePoint', 'Google Drive', 'Okta', 'Auth0',
-    'OneLogin', 'CrowdStrike', 'SentinelOne', 'Carbon Black',
-    'Wrike', 'Smartsheet', 'Teamwork', 'Harvest', 'Toggl',
-    'QuickBooks Online', 'FreshBooks', 'Wave', 'Bill.com',
-    'Expensify', 'Concur', 'Coupa', 'Anaplan', 'Adaptive Insights',
-    'Planful', 'Sage Intacct', 'Navan', 'Ramp', 'Brex',
-    'Sprinklr', 'Hootsuite', 'Sprout Social', 'HubSpot Marketing',
-    'HubSpot Service', 'Salesforce Marketing Cloud', 'Eloqua',
-    'Adobe Marketo', 'Act-On', 'Emma', 'Constant Contact',
-    'Campaign Monitor', 'Drip', 'ConvertKit', 'AWeber',
-    'Amazon Ads', 'Microsoft Ads', 'Yahoo DSP', 'The Trade Desk',
-    'MediaMath', 'DoubleVerify', 'IAS', 'Moat', 'Kochava',
-    'Singular', 'Lotame', 'LiveRamp', 'Snowplow',
-    'Kinesis', 'Kafka', 'Event Hubs', 'Pub/Sub', 'RabbitMQ',
-    'Elasticsearch', 'Splunk', 'Sumo Logic', 'New Relic',
-    'AppDynamics', 'Dynatrace', 'CloudWatch', 'Azure Monitor',
-    'StatusPage', 'OpsGenie', 'VictorOps', 'xMatters',
-    'ConnectWise', 'Autotask', 'SolarWinds', 'Datto',
-    'Google BigQuery', 'Amazon Redshift', 'Azure Synapse',
-    'Teradata', 'Vertica', 'Greenplum', 'ClickHouse',
-    'SingleStore', 'CockroachDB', 'YugabyteDB', 'TiDB',
-    'Couchbase', 'Cassandra', 'Redis', 'Neo4j', 'FTP', 'SFTP',
-    'Azure SQL Database', 'Google Cloud SQL',
-    'Amazon RDS', 'Heroku Postgres'
-  ]);
-
-  const HEADER_LABELS = new Set([
-    'Connection name', 'Source type', 'Destination', 'Status',
+  const NON_CONNECTOR_VALUES = new Set([
+    '', 'Connection name', 'Source type', 'Destination', 'Status',
     'Last synced', 'Sync frequency', 'Schema', 'Setup state',
     'Data source', 'Usage', 'Tables', 'Sync', 'Name', 'Type',
-    'Connection', 'Connector', 'Actions', 'Schedule', 'Frequency'
+    'Connection', 'Connector', 'Actions', 'Schedule', 'Frequency',
+    'Active', 'Paused', 'Broken', 'Incomplete', 'Setup', 'Historical Sync',
+    'Syncing', 'Rescheduled', 'true', 'false', 'N/A', '—', '-',
+    'Edit', 'Delete', 'Pause', 'Resume', 'View', 'Details'
   ]);
 
-  function collectVisibleSourceTypes(typeCounts) {
-    let found = false;
+  // Matches timestamps, durations, pure numbers, UUIDs
+  const NOISE_PATTERN = /^(\d{1,4}[\/\-]\d|[\d:]+\s*(am|pm|hrs|min|sec|ago)|[\d,]+$|\d+\.\d+|\w{8}-\w{4}-)/i;
 
-    // Strategy 1: Try the known class name first (fast path)
-    const byClass = document.querySelectorAll('span.ndnOq');
-    if (byClass.length > 0) {
-      for (const span of byClass) {
-        const t = (span.textContent || '').trim();
-        if (!t || HEADER_LABELS.has(t)) continue;
-        if (span.closest('a')) continue;
-        typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
-        found = true;
+  function isLikelyConnectorName(text) {
+    if (!text || text.length < 2 || text.length > 60) return false;
+    if (NON_CONNECTOR_VALUES.has(text)) return false;
+    if (NOISE_PATTERN.test(text)) return false;
+    // Reject if it looks like a raw schema name (raw_something_v2)
+    if (/^raw_/.test(text)) return false;
+    // Reject URLs
+    if (/^https?:\/\//.test(text)) return false;
+    return true;
+  }
+
+  // Find which column index holds "Source type" by scanning headers
+  function findSourceTypeColumnIndex() {
+    // Try <th> elements
+    const ths = document.querySelectorAll('th');
+    for (let i = 0; i < ths.length; i++) {
+      const t = (ths[i].textContent || '').trim();
+      if (/^source\s*type$/i.test(t) || /^connector$/i.test(t) || /^type$/i.test(t)) {
+        return { index: i, method: 'th' };
       }
     }
 
-    // Strategy 2: Find the "Source type" column header, then grab siblings
+    // Try role="columnheader"
+    const colHeaders = document.querySelectorAll('[role="columnheader"]');
+    for (let i = 0; i < colHeaders.length; i++) {
+      const t = (colHeaders[i].textContent || '').trim();
+      if (/^source\s*type$/i.test(t) || /^connector$/i.test(t) || /^type$/i.test(t)) {
+        return { index: i, method: 'role' };
+      }
+    }
+
+    // Try first row of a grid/table as header
+    const firstRow = document.querySelector('[role="row"]:first-child, tr:first-child');
+    if (firstRow) {
+      const cells = firstRow.querySelectorAll('[role="cell"], [role="gridcell"], [role="columnheader"], td, th');
+      for (let i = 0; i < cells.length; i++) {
+        const t = (cells[i].textContent || '').trim();
+        if (/^source\s*type$/i.test(t) || /^connector$/i.test(t) || /^type$/i.test(t)) {
+          return { index: i, method: 'first-row' };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function collectVisibleSourceTypes(typeCounts, colInfo) {
+    let found = false;
+
+    // Strategy 1: Column-position extraction (most reliable)
+    if (colInfo) {
+      const rows = document.querySelectorAll('tr, [role="row"]');
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td, [role="cell"], [role="gridcell"]');
+        if (cells.length > colInfo.index) {
+          const t = (cells[colInfo.index].textContent || '').trim();
+          if (isLikelyConnectorName(t)) {
+            typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+            found = true;
+          }
+        }
+      }
+    }
+
+    // Strategy 2: Try the known CSS class (fast path if it still works)
     if (!found) {
-      const allCells = document.querySelectorAll('td, div[role="cell"], div[role="gridcell"]');
-      for (const cell of allCells) {
-        const t = (cell.textContent || '').trim();
-        if (KNOWN_CONNECTOR_NAMES.has(t)) {
+      const byClass = document.querySelectorAll('span.ndnOq');
+      if (byClass.length > 0) {
+        for (const span of byClass) {
+          const t = (span.textContent || '').trim();
+          if (!isLikelyConnectorName(t)) continue;
+          if (span.closest('a')) continue;
           typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
           found = true;
         }
       }
     }
 
-    // Strategy 3: Walk table rows — look for rows with connector icons/images
+    // Strategy 3: Look for connector icons — img[alt] or svg near text
     if (!found) {
-      const rows = document.querySelectorAll('tr, div[role="row"], [class*="Row"], [class*="row"]');
-      for (const row of rows) {
-        const img = row.querySelector('img[alt], svg[aria-label]');
-        if (img) {
-          const alt = (img.getAttribute('alt') || img.getAttribute('aria-label') || '').trim();
-          if (alt && KNOWN_CONNECTOR_NAMES.has(alt)) {
-            typeCounts.set(alt, (typeCounts.get(alt) || 0) + 1);
-            found = true;
-            continue;
-          }
-        }
-        const spans = row.querySelectorAll('span, p, div');
+      const icons = document.querySelectorAll('img[alt][src*="connector"], img[alt][src*="icon"], img[alt][src*="logo"]');
+      for (const img of icons) {
+        const row = img.closest('tr, [role="row"], [class*="Row"], [class*="row"]');
+        if (!row) continue;
+        // The source type text is usually a sibling span near the icon
+        const spans = row.querySelectorAll('span, p');
         for (const span of spans) {
           if (span.children.length > 0) continue;
           const t = (span.textContent || '').trim();
-          if (t && KNOWN_CONNECTOR_NAMES.has(t) && !HEADER_LABELS.has(t)) {
+          if (isLikelyConnectorName(t) && t !== img.alt) {
             typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
             found = true;
             break;
@@ -161,16 +156,22 @@
       }
     }
 
-    // Strategy 4: Broadest — scan all leaf-level text nodes for known names
+    // Strategy 4: Scan all visible rows for elements that look like connector type cells
+    // (second column position heuristic — "Source type" is typically column 2)
     if (!found) {
-      const walker = document.createTreeWalker(
-        document.body, NodeFilter.SHOW_TEXT, null
-      );
-      let node;
-      while ((node = walker.nextNode())) {
-        const t = (node.textContent || '').trim();
-        if (t && KNOWN_CONNECTOR_NAMES.has(t) && !HEADER_LABELS.has(t)) {
-          typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+      const rows = document.querySelectorAll('[class*="Row"], [class*="row"], [class*="Item"], [class*="item"]');
+      for (const row of rows) {
+        const leafSpans = [];
+        row.querySelectorAll('span, p, div').forEach(el => {
+          if (el.children.length === 0) {
+            const t = (el.textContent || '').trim();
+            if (isLikelyConnectorName(t)) leafSpans.push(t);
+          }
+        });
+        // Heuristic: in a connector row, the second distinct text is usually source type
+        if (leafSpans.length >= 2) {
+          typeCounts.set(leafSpans[1], (typeCounts.get(leafSpans[1]) || 0) + 1);
+          found = true;
         }
       }
     }
@@ -200,12 +201,12 @@
 
   function scanConnectionsList() {
     const typeCounts = new Map();
-    collectVisibleSourceTypes(typeCounts);
+    const colInfo = findSourceTypeColumnIndex();
+    collectVisibleSourceTypes(typeCounts, colInfo);
     return buildConnectionsResult(typeCounts);
   }
 
   function findScrollContainer() {
-    // Try known Fivetran selectors first
     const candidates = [
       document.querySelector('[class*="ScrollContainer"]'),
       document.querySelector('[class*="scrollable"]'),
@@ -215,12 +216,10 @@
       document.querySelector('main')
     ].filter(Boolean);
 
-    // Pick the one that actually scrolls (scrollHeight > clientHeight)
     for (const el of candidates) {
       if (el.scrollHeight > el.clientHeight + 100) return el;
     }
 
-    // Walk up from the first table/grid looking for scrollable ancestor
     const table = document.querySelector('table, [role="grid"], [role="table"], [class*="Table"]');
     if (table) {
       let el = table.parentElement;
@@ -235,14 +234,32 @@
       }
     }
 
-    return document.documentElement;
+    // Last resort: find deepest scrollable element with large content
+    let best = document.documentElement;
+    let bestDepth = 0;
+    document.querySelectorAll('*').forEach(el => {
+      if (el.scrollHeight > el.clientHeight + 200) {
+        let depth = 0;
+        let p = el;
+        while (p) { depth++; p = p.parentElement; }
+        if (depth > bestDepth) {
+          const style = window.getComputedStyle(el);
+          if (style.overflow !== 'visible' || style.overflowY !== 'visible') {
+            best = el;
+            bestDepth = depth;
+          }
+        }
+      }
+    });
+    return best;
   }
 
   async function scanConnectionsListFull() {
     const typeCounts = new Map();
+    const colInfo = findSourceTypeColumnIndex();
     const scrollEl = findScrollContainer();
 
-    collectVisibleSourceTypes(typeCounts);
+    collectVisibleSourceTypes(typeCounts, colInfo);
     const initialCount = typeCounts.size;
 
     const getScrollHeight = () => scrollEl.scrollHeight;
@@ -257,10 +274,10 @@
 
     let lastScrollHeight = 0;
     let stableCount = 0;
-    let lastTypeCount = typeCounts.size;
-    let noNewTypesCount = 0;
-    const MAX_ITERATIONS = 500;
-    const SCROLL_WAIT_MS = 200;
+    let lastTotalCount = Array.from(typeCounts.values()).reduce((a, b) => a + b, 0);
+    let noNewCount = 0;
+    const MAX_ITERATIONS = 600;
+    const SCROLL_WAIT_MS = 250;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const currentHeight = getScrollHeight();
@@ -270,37 +287,40 @@
         : scrollEl.clientHeight;
 
       if (currentTop + viewportHeight >= currentHeight - 50) {
-        collectVisibleSourceTypes(typeCounts);
+        collectVisibleSourceTypes(typeCounts, colInfo);
 
         if (currentHeight === lastScrollHeight) {
           stableCount++;
-          if (stableCount >= 3) break;
+          if (stableCount >= 5) break;
         } else {
           stableCount = 0;
         }
         lastScrollHeight = currentHeight;
       }
 
-      setScroll(getScrollTop() + Math.floor(viewportHeight * 0.8));
+      // Scroll by 60% of viewport (smaller steps = more overlap = fewer missed rows)
+      setScroll(getScrollTop() + Math.floor(viewportHeight * 0.6));
       await new Promise(r => setTimeout(r, SCROLL_WAIT_MS));
-      collectVisibleSourceTypes(typeCounts);
+      collectVisibleSourceTypes(typeCounts, colInfo);
 
-      if (typeCounts.size === lastTypeCount) {
-        noNewTypesCount++;
+      const currentTotal = Array.from(typeCounts.values()).reduce((a, b) => a + b, 0);
+      if (currentTotal === lastTotalCount) {
+        noNewCount++;
       } else {
-        noNewTypesCount = 0;
-        lastTypeCount = typeCounts.size;
+        noNewCount = 0;
+        lastTotalCount = currentTotal;
       }
-      // If we've scrolled 30 times with no new connector types, stop
-      if (noNewTypesCount >= 30 && typeCounts.size > 0) break;
+      // Only stop if we've had 40 scrolls with no new connections at all
+      if (noNewCount >= 40 && typeCounts.size > 0) break;
     }
 
     setScroll(0);
 
+    const totalConns = Array.from(typeCounts.values()).reduce((a, b) => a + b, 0);
     const result = buildConnectionsResult(typeCounts);
-    result.method = typeCounts.size > initialCount ? 'scroll-scan' : 'single-pass';
-    result.note = typeCounts.size > initialCount
-      ? `Scrolled to capture all connectors (${initialCount} visible initially, ${typeCounts.size} total found)`
+    result.method = totalConns > initialCount ? 'scroll-scan' : 'single-pass';
+    result.note = totalConns > initialCount
+      ? `Scrolled to capture all connectors (${initialCount} visible initially, ${typeCounts.size} types / ${totalConns} total found)`
       : undefined;
     return result;
   }
@@ -494,10 +514,27 @@
   // ─── FALLBACK: TEXT MATCHING ──────────────────────────────
   // When we can't find the table structure, scan the entire page for known connector names
   function scanByTextMatching() {
+    const COMMON_CONNECTORS = [
+      'HubSpot', 'Salesforce', 'Stripe', 'Slack', 'GitHub', 'Jira',
+      'PagerDuty', 'Datadog', 'Marketo', 'Zendesk', 'Intercom', 'Asana',
+      'Shopify', 'Google Analytics', 'Google Analytics 4', 'Google Ads',
+      'Facebook Ads', 'LinkedIn Ads', 'Snowflake', 'BigQuery', 'Redshift',
+      'PostgreSQL', 'MySQL', 'MongoDB', 'NetSuite', 'QuickBooks', 'Xero',
+      'Braze', 'Segment', 'Amplitude', 'Mixpanel', 'Twilio', 'SendGrid',
+      'Zuora', 'Chargebee', 'Workday', 'ServiceNow', 'Confluence',
+      'Greenhouse', 'Lever', 'Google Sheets', 'Airtable', 'Oracle', 'SAP',
+      'Dynamics 365', 'Freshdesk', 'Pipedrive', 'Outreach', 'SalesLoft',
+      'Gong', 'ZoomInfo', 'Klaviyo', 'Mailchimp', 'ActiveCampaign',
+      'SQL Server', 'MariaDB', 'DynamoDB', 'Firebase', 'Amazon S3',
+      'TikTok Ads', 'Snapchat Ads', 'Pinterest Ads', 'AppsFlyer',
+      'Okta', 'Databricks', 'Fivetran Log', 'Notion', 'Linear',
+      'Zoom', 'DocuSign', 'Box', 'Dropbox', 'Kafka', 'Elasticsearch'
+    ];
+
     const pageText = document.body.innerText;
     const found = [];
 
-    for (const connector of KNOWN_CONNECTOR_NAMES) {
+    for (const connector of COMMON_CONNECTORS) {
       const regex = new RegExp(`\\b${connector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
       if (regex.test(pageText)) {
         found.push({
