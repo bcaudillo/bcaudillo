@@ -2231,6 +2231,94 @@ const connectorRecommendations = {
       why: 'HubSpot tracks the customer journey from lead to customer. Zendesk tracks what happens after — support quality directly impacts retention. Connecting both reveals which customer segments need more support investment.' },
     { key: 'stripe', reason: 'Link support tickets to billing data for revenue-at-risk analysis',
       why: 'When a customer filing angry support tickets is also your highest-paying account, that\'s a priority. Connecting Zendesk to Stripe lets you weight support issues by revenue impact and prioritize accordingly.' }
+  ],
+  quickbooks: [
+    { key: 'salesforce', reason: 'Connect accounting to CRM for order-to-cash and revenue reconciliation',
+      why: 'Salesforce says the deal closed. QuickBooks says whether the invoice was sent and paid. Connecting both closes the loop between sales and finance — no more spreadsheet reconciliation at month end.' },
+    { key: 'stripe', reason: 'Reconcile QuickBooks entries with Stripe payment transactions',
+      why: 'Stripe processes the payment. QuickBooks records it in the general ledger. Connecting both automates reconciliation, ensures every fee and payout maps to the right account, and cuts days off monthly close.' },
+    { key: 'shopify', reason: 'Link e-commerce orders to accounting for automated revenue tracking',
+      why: 'Shopify creates orders. QuickBooks records revenue. Without automated sync, someone is manually entering every order into QBO. This connection automates that and gives real-time gross margin visibility.' }
+  ],
+  xero: [
+    { key: 'stripe', reason: 'Reconcile Xero accounting with Stripe payment processing',
+      why: 'Xero needs every Stripe transaction categorized correctly. This connection automates bank reconciliation and ensures Stripe fees, refunds, and payouts land in the right Xero accounts.' },
+    { key: 'salesforce', reason: 'Bridge CRM deals to Xero invoicing for revenue visibility',
+      why: 'Sales closes deals in Salesforce. Finance invoices in Xero. Connecting both gives leadership a real-time view from pipeline to payment without manual data entry between systems.' },
+    { key: 'shopify', reason: 'Automate e-commerce revenue tracking in Xero',
+      why: 'Shopify brands using Xero need every order, refund, and fee recorded in the books. This connection replaces manual bookkeeping with automated, reconciled financial data.' }
+  ],
+  workday: [
+    { key: 'salesforce', reason: 'Connect HR data to CRM for headcount-to-revenue analysis',
+      why: 'Salesforce tracks revenue. Workday tracks the people generating it. Connecting both lets leadership see revenue per employee, quota attainment by role, and hiring impact on pipeline.' },
+    { key: 'netsuite', reason: 'Unify HR and finance for compensation and budget analysis',
+      why: 'Workday manages people and payroll. NetSuite manages the budget. Connecting both gives finance a unified view of compensation costs against departmental budgets without manual spreadsheet merging.' }
+  ],
+  bamboohr: [
+    { key: 'salesforce', reason: 'Correlate headcount changes with sales performance',
+      why: 'When the sales team grows, does revenue follow? BambooHR tracks hiring and attrition. Salesforce tracks revenue. Connecting both reveals the ROI of each new hire and the revenue impact of attrition.' },
+    { key: 'workday', reason: 'Consolidate HR data for companies transitioning between systems',
+      why: 'Many companies outgrow BambooHR and migrate to Workday. Having both in the warehouse ensures continuity of people analytics during the transition.' }
+  ],
+  amplitude: [
+    { key: 'salesforce', reason: 'Connect product analytics to CRM for product-led sales',
+      why: 'Amplitude shows who\'s using the product and how. Salesforce shows the deal. When sales reps can see a prospect\'s product usage, they know exactly when to reach out and what to pitch — product-qualified leads close at 3x the rate.' },
+    { key: 'stripe', reason: 'Link product behavior to payment data for conversion analysis',
+      why: 'Amplitude tracks what users do. Stripe tracks what they pay. Together you can see which product actions predict upgrades, which features drive expansion revenue, and where to invest in the product.' },
+    { key: 'hubspot', reason: 'Feed product usage data into marketing automation for lifecycle campaigns',
+      why: 'Amplitude knows when a user hits an activation milestone. HubSpot can trigger a campaign. Connecting both enables product-triggered marketing — the most effective form of lifecycle engagement.' }
+  ],
+  mixpanel: [
+    { key: 'salesforce', reason: 'Connect product analytics to CRM for data-driven sales prioritization',
+      why: 'Mixpanel tracks product engagement. Salesforce tracks deals. When sales sees which trial users are most engaged, they stop wasting time on tire-kickers and focus on the users who are already loving the product.' },
+    { key: 'stripe', reason: 'Attribute product engagement to revenue outcomes',
+      why: 'Mixpanel shows what users do. Stripe shows what they pay. Connecting both reveals the product behaviors that predict upgrades and churn — essential for product-led growth companies.' }
+  ],
+  segment: [
+    { key: 'amplitude', reason: 'Route Segment event data to Amplitude for unified product analytics',
+      why: 'Segment collects events from everywhere (web, mobile, server). Amplitude analyzes them. Having both in the warehouse ensures the raw event stream and the analyzed output are available for cross-validation.' },
+    { key: 'hubspot', reason: 'Feed behavioral data from Segment into CRM for personalized outreach',
+      why: 'Segment captures every user interaction. HubSpot manages the relationship. Connecting both means sales and marketing see the full behavioral picture alongside the CRM context.' },
+    { key: 'salesforce', reason: 'Enrich CRM records with Segment behavioral data for sales intelligence',
+      why: 'Segment captures cross-platform behavior. Salesforce manages the deal. Connecting both gives sales reps a 360-degree view of prospect engagement before every call.' }
+  ],
+  braze: [
+    { key: 'amplitude', reason: 'Connect messaging engagement to product analytics for lifecycle optimization',
+      why: 'Braze sends the message. Amplitude tracks what the user does next. Connecting both reveals which messages actually drive product engagement — not just opens and clicks, but actual feature adoption.' },
+    { key: 'shopify', reason: 'Link marketing campaigns to e-commerce purchase behavior',
+      why: 'Braze powers the lifecycle campaigns. Shopify captures the purchases. Connecting both shows true campaign ROI by tying push notifications, emails, and in-app messages to actual orders and revenue.' },
+    { key: 'segment', reason: 'Feed Segment event data into Braze for behavioral targeting analysis',
+      why: 'Segment captures events from every touchpoint. Braze uses them for targeting. Having both in the warehouse lets you audit which behavioral triggers drive the most effective campaigns.' }
+  ],
+  outreach: [
+    { key: 'salesforce', reason: 'Connect sales engagement to CRM pipeline for outbound attribution',
+      why: 'Outreach tracks every email and call. Salesforce tracks the deals. Connecting both reveals which sequences, templates, and reps drive the most pipeline — the key question every VP of Sales asks.' },
+    { key: 'hubspot', reason: 'Link outbound activity to marketing engagement for full-funnel visibility',
+      why: 'Marketing warms leads in HubSpot. SDRs work them in Outreach. Connecting both shows which marketing touches make outbound more effective — warm leads from webinars vs. cold lists.' },
+    { key: 'salesloft', reason: 'Consolidate sales engagement data if migrating between platforms',
+      why: 'Some teams use both or are migrating. Having both in the warehouse ensures continuity of activity and performance data during the transition.' }
+  ],
+  salesloft: [
+    { key: 'salesforce', reason: 'Attribute sales engagement activities to CRM pipeline and revenue',
+      why: 'Salesloft tracks the outbound grind — emails, calls, cadences. Salesforce tracks the deals. Connecting both proves which sales activities actually generate pipeline, enabling data-driven coaching and capacity planning.' },
+    { key: 'hubspot', reason: 'Connect outbound engagement to marketing lifecycle for lead quality analysis',
+      why: 'Marketing generates leads in HubSpot. SDRs work them in Salesloft. Connecting both shows which marketing sources produce leads that actually respond to outreach — so marketing can optimize for reply-worthy leads, not just MQLs.' }
+  ],
+  klaviyo: [
+    { key: 'shopify', reason: 'Connect email/SMS marketing to e-commerce transactions for revenue attribution',
+      why: 'Klaviyo sends the campaigns and flows. Shopify captures the orders. While Klaviyo has its own attribution, having both in the warehouse lets you build custom attribution models and validate Klaviyo\'s claimed revenue against actual Shopify orders.' },
+    { key: 'facebook_ads', reason: 'Unify paid acquisition with lifecycle marketing for full customer journey',
+      why: 'Facebook Ads acquires the customer. Klaviyo retains them. Connecting both shows the true cost of a customer: acquisition cost (Facebook) + lifetime value driven by retention marketing (Klaviyo).' },
+    { key: 'google_ads', reason: 'Connect paid search to email marketing for cross-channel attribution',
+      why: 'Google Ads drives the first visit. Klaviyo nurtures the relationship. Together you can see which ad keywords produce subscribers who actually engage with email and purchase — not just one-time clickers.' }
+  ],
+  pipedrive: [
+    { key: 'hubspot', reason: 'Connect CRM pipeline to marketing engagement for SMB full-funnel analytics',
+      why: 'Pipedrive tracks the deals. HubSpot tracks the marketing journey. For SMBs using both, this connection reveals which marketing activities drive the best-quality pipeline in Pipedrive.' },
+    { key: 'stripe', reason: 'Validate Pipedrive won deals against actual Stripe payments',
+      why: 'Pipedrive says the deal is won. Stripe says whether the customer actually paid. This connection eliminates the gap between CRM reporting and financial reality.' },
+    { key: 'quickbooks', reason: 'Bridge CRM to accounting for SMB revenue visibility',
+      why: 'SMBs typically use Pipedrive for sales and QuickBooks for accounting. Connecting both automates the handoff from closed deal to invoiced revenue, eliminating double data entry and reconciliation headaches.' }
   ]
 };
 
