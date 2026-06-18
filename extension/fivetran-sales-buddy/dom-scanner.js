@@ -49,18 +49,130 @@
   // virtualized scrolling — only visible rows are in the DOM. We auto-scroll
   // the page to force all rows to render, collecting connector types as we go.
 
+  const KNOWN_CONNECTOR_NAMES = new Set([
+    'HubSpot', 'Salesforce', 'Stripe', 'Slack', 'GitHub', 'Jira',
+    'PagerDuty', 'Tempo', 'incident.io', 'Recurly', 'LaunchDarkly',
+    'Datadog', 'Marketo', 'Zendesk', 'Intercom', 'Asana', 'Shopify',
+    'Google Analytics', 'Google Analytics 4', 'Google Ads', 'Facebook Ads',
+    'LinkedIn Ads', 'Snowflake', 'BigQuery', 'Redshift', 'PostgreSQL',
+    'MySQL', 'MongoDB', 'NetSuite', 'QuickBooks', 'Xero', 'Braze',
+    'Segment', 'Amplitude', 'Mixpanel', 'Twilio', 'SendGrid', 'Zuora',
+    'Chargebee', 'Workday', 'ServiceNow', 'Confluence', 'Bamboo HR',
+    'Greenhouse', 'Lever', 'Fivetran Platform', 'Connector SDK',
+    'Google Sheets', 'Airtable', 'Monday.com', 'Oracle', 'SAP',
+    'Dynamics 365', 'Freshdesk', 'Freshsales', 'Pipedrive', 'Close',
+    'Outreach', 'SalesLoft', 'Gong', 'Apollo', 'ZoomInfo', 'Clearbit',
+    'FullStory', 'Heap', 'Adobe Analytics', 'Pardot', 'Mailchimp',
+    'Klaviyo', 'Brevo', 'ActiveCampaign', 'Customer.io', 'SQL Server',
+    'Aurora', 'MariaDB', 'Cosmos DB', 'DynamoDB', 'Firebase',
+    'Google Cloud Storage', 'Amazon S3', 'Azure Blob Storage',
+    'Webhooks', 'Iterable', 'AppsFlyer', 'Adjust', 'Branch',
+    'Snapchat Ads', 'TikTok Ads', 'Pinterest Ads', 'Twitter Ads',
+    'Google Search Console', 'Google Play', 'App Store Connect',
+    'Coupa', 'Netsuite SuiteAnalytics', 'Workato', 'Gainsight',
+    'ChurnZero', 'Totango', 'Pendo', 'WalkMe', 'Appcues',
+    'Looker', 'Tableau', 'Power BI', 'Databricks', 'Census',
+    'Fivetran Log', 'Notion', 'ClickUp', 'Linear', 'Shortcut',
+    'Front', 'Drift', 'Qualified', 'Calendly', 'Zoom',
+    'DocuSign', 'PandaDoc', 'Conga', 'Box', 'Dropbox',
+    'OneDrive', 'SharePoint', 'Google Drive', 'Okta', 'Auth0',
+    'OneLogin', 'CrowdStrike', 'SentinelOne', 'Carbon Black',
+    'Wrike', 'Smartsheet', 'Teamwork', 'Harvest', 'Toggl',
+    'QuickBooks Online', 'FreshBooks', 'Wave', 'Bill.com',
+    'Expensify', 'Concur', 'Coupa', 'Anaplan', 'Adaptive Insights',
+    'Planful', 'Sage Intacct', 'Navan', 'Ramp', 'Brex',
+    'Sprinklr', 'Hootsuite', 'Sprout Social', 'HubSpot Marketing',
+    'HubSpot Service', 'Salesforce Marketing Cloud', 'Eloqua',
+    'Adobe Marketo', 'Act-On', 'Emma', 'Constant Contact',
+    'Campaign Monitor', 'Drip', 'ConvertKit', 'AWeber',
+    'Amazon Ads', 'Microsoft Ads', 'Yahoo DSP', 'The Trade Desk',
+    'MediaMath', 'DoubleVerify', 'IAS', 'Moat', 'Kochava',
+    'Singular', 'Lotame', 'LiveRamp', 'Snowplow',
+    'Kinesis', 'Kafka', 'Event Hubs', 'Pub/Sub', 'RabbitMQ',
+    'Elasticsearch', 'Splunk', 'Sumo Logic', 'New Relic',
+    'AppDynamics', 'Dynatrace', 'CloudWatch', 'Azure Monitor',
+    'StatusPage', 'OpsGenie', 'VictorOps', 'xMatters',
+    'ConnectWise', 'Autotask', 'SolarWinds', 'Datto',
+    'Google BigQuery', 'Amazon Redshift', 'Azure Synapse',
+    'Teradata', 'Vertica', 'Greenplum', 'ClickHouse',
+    'SingleStore', 'CockroachDB', 'YugabyteDB', 'TiDB',
+    'Couchbase', 'Cassandra', 'Redis', 'Neo4j', 'FTP', 'SFTP',
+    'Azure SQL Database', 'Google Cloud SQL',
+    'Amazon RDS', 'Heroku Postgres'
+  ]);
+
+  const HEADER_LABELS = new Set([
+    'Connection name', 'Source type', 'Destination', 'Status',
+    'Last synced', 'Sync frequency', 'Schema', 'Setup state',
+    'Data source', 'Usage', 'Tables', 'Sync', 'Name', 'Type',
+    'Connection', 'Connector', 'Actions', 'Schedule', 'Frequency'
+  ]);
+
   function collectVisibleSourceTypes(typeCounts) {
-    const HEADER_LABELS = new Set([
-      'Connection name', 'Source type', 'Destination', 'Status',
-      'Last synced', 'Sync frequency', 'Schema', 'Setup state',
-      'Data source', 'Usage', 'Tables'
-    ]);
-    const sourceTypeSpans = document.querySelectorAll('span.ndnOq');
-    for (const span of sourceTypeSpans) {
-      const t = (span.textContent || '').trim();
-      if (!t || HEADER_LABELS.has(t)) continue;
-      if (span.closest('a')) continue;
-      typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+    let found = false;
+
+    // Strategy 1: Try the known class name first (fast path)
+    const byClass = document.querySelectorAll('span.ndnOq');
+    if (byClass.length > 0) {
+      for (const span of byClass) {
+        const t = (span.textContent || '').trim();
+        if (!t || HEADER_LABELS.has(t)) continue;
+        if (span.closest('a')) continue;
+        typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+        found = true;
+      }
+    }
+
+    // Strategy 2: Find the "Source type" column header, then grab siblings
+    if (!found) {
+      const allCells = document.querySelectorAll('td, div[role="cell"], div[role="gridcell"]');
+      for (const cell of allCells) {
+        const t = (cell.textContent || '').trim();
+        if (KNOWN_CONNECTOR_NAMES.has(t)) {
+          typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+          found = true;
+        }
+      }
+    }
+
+    // Strategy 3: Walk table rows — look for rows with connector icons/images
+    if (!found) {
+      const rows = document.querySelectorAll('tr, div[role="row"], [class*="Row"], [class*="row"]');
+      for (const row of rows) {
+        const img = row.querySelector('img[alt], svg[aria-label]');
+        if (img) {
+          const alt = (img.getAttribute('alt') || img.getAttribute('aria-label') || '').trim();
+          if (alt && KNOWN_CONNECTOR_NAMES.has(alt)) {
+            typeCounts.set(alt, (typeCounts.get(alt) || 0) + 1);
+            found = true;
+            continue;
+          }
+        }
+        const spans = row.querySelectorAll('span, p, div');
+        for (const span of spans) {
+          if (span.children.length > 0) continue;
+          const t = (span.textContent || '').trim();
+          if (t && KNOWN_CONNECTOR_NAMES.has(t) && !HEADER_LABELS.has(t)) {
+            typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // Strategy 4: Broadest — scan all leaf-level text nodes for known names
+    if (!found) {
+      const walker = document.createTreeWalker(
+        document.body, NodeFilter.SHOW_TEXT, null
+      );
+      let node;
+      while ((node = walker.nextNode())) {
+        const t = (node.textContent || '').trim();
+        if (t && KNOWN_CONNECTOR_NAMES.has(t) && !HEADER_LABELS.has(t)) {
+          typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+        }
+      }
     }
   }
 
@@ -92,23 +204,47 @@
     return buildConnectionsResult(typeCounts);
   }
 
-  // Async version: scrolls the page to capture all virtualized rows.
-  // Returns a promise that resolves with the full connections result.
+  function findScrollContainer() {
+    // Try known Fivetran selectors first
+    const candidates = [
+      document.querySelector('[class*="ScrollContainer"]'),
+      document.querySelector('[class*="scrollable"]'),
+      document.querySelector('[class*="VirtualList"]'),
+      document.querySelector('[class*="virtualList"]'),
+      document.querySelector('[data-testid*="connector"], [data-testid*="connection"]')?.closest('[style*="overflow"]'),
+      document.querySelector('main')
+    ].filter(Boolean);
+
+    // Pick the one that actually scrolls (scrollHeight > clientHeight)
+    for (const el of candidates) {
+      if (el.scrollHeight > el.clientHeight + 100) return el;
+    }
+
+    // Walk up from the first table/grid looking for scrollable ancestor
+    const table = document.querySelector('table, [role="grid"], [role="table"], [class*="Table"]');
+    if (table) {
+      let el = table.parentElement;
+      for (let i = 0; i < 10 && el; i++) {
+        const style = window.getComputedStyle(el);
+        if ((style.overflow === 'auto' || style.overflow === 'scroll' ||
+             style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+            el.scrollHeight > el.clientHeight + 100) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+    }
+
+    return document.documentElement;
+  }
+
   async function scanConnectionsListFull() {
     const typeCounts = new Map();
+    const scrollEl = findScrollContainer();
 
-    // Find the scrollable container — usually the main content area
-    const scrollEl = document.querySelector('[class*="ScrollContainer"]')
-      || document.querySelector('[class*="scrollable"]')
-      || document.querySelector('main')
-      || document.documentElement;
-
-    // Collect what's visible now
     collectVisibleSourceTypes(typeCounts);
     const initialCount = typeCounts.size;
 
-    // Scroll to bottom in steps to force virtualized rows to render
-    const scrollTarget = scrollEl === document.documentElement ? window : scrollEl;
     const getScrollHeight = () => scrollEl.scrollHeight;
     const getScrollTop = () => scrollEl === document.documentElement ? window.scrollY : scrollEl.scrollTop;
     const setScroll = (y) => {
@@ -121,7 +257,10 @@
 
     let lastScrollHeight = 0;
     let stableCount = 0;
-    const MAX_ITERATIONS = 200; // Safety limit for very large lists
+    let lastTypeCount = typeCounts.size;
+    let noNewTypesCount = 0;
+    const MAX_ITERATIONS = 500;
+    const SCROLL_WAIT_MS = 200;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const currentHeight = getScrollHeight();
@@ -130,32 +269,32 @@
         ? window.innerHeight
         : scrollEl.clientHeight;
 
-      // We've reached the bottom
       if (currentTop + viewportHeight >= currentHeight - 50) {
-        // Collect any remaining items
         collectVisibleSourceTypes(typeCounts);
 
-        // Check if scroll height is stable (no more lazy-loaded content)
         if (currentHeight === lastScrollHeight) {
           stableCount++;
-          if (stableCount >= 3) break; // Truly at the bottom
+          if (stableCount >= 3) break;
         } else {
           stableCount = 0;
         }
         lastScrollHeight = currentHeight;
       }
 
-      // Scroll down by ~80% of viewport height
       setScroll(getScrollTop() + Math.floor(viewportHeight * 0.8));
-
-      // Wait for DOM to update
-      await new Promise(r => setTimeout(r, 150));
-
-      // Collect newly rendered items
+      await new Promise(r => setTimeout(r, SCROLL_WAIT_MS));
       collectVisibleSourceTypes(typeCounts);
+
+      if (typeCounts.size === lastTypeCount) {
+        noNewTypesCount++;
+      } else {
+        noNewTypesCount = 0;
+        lastTypeCount = typeCounts.size;
+      }
+      // If we've scrolled 30 times with no new connector types, stop
+      if (noNewTypesCount >= 30 && typeCounts.size > 0) break;
     }
 
-    // Scroll back to top
     setScroll(0);
 
     const result = buildConnectionsResult(typeCounts);
@@ -355,30 +494,10 @@
   // ─── FALLBACK: TEXT MATCHING ──────────────────────────────
   // When we can't find the table structure, scan the entire page for known connector names
   function scanByTextMatching() {
-    const knownConnectors = [
-      'HubSpot', 'Salesforce', 'Stripe', 'Slack', 'GitHub', 'Jira',
-      'PagerDuty', 'Tempo', 'incident.io', 'Recurly', 'LaunchDarkly',
-      'Datadog', 'Marketo', 'Zendesk', 'Intercom', 'Asana', 'Shopify',
-      'Google Analytics', 'Google Ads', 'Facebook Ads', 'LinkedIn Ads',
-      'Snowflake', 'BigQuery', 'Redshift', 'PostgreSQL', 'MySQL',
-      'MongoDB', 'NetSuite', 'QuickBooks', 'Xero', 'Braze',
-      'Segment', 'Amplitude', 'Mixpanel', 'Twilio', 'SendGrid',
-      'Zuora', 'Chargebee', 'Workday', 'ServiceNow', 'Confluence',
-      'Bamboo HR', 'Greenhouse', 'Lever', 'Fivetran Platform',
-      'Connector SDK', 'Google Sheets', 'Airtable', 'Monday.com',
-      'Oracle', 'SAP', 'Dynamics 365', 'Freshdesk', 'Freshsales',
-      'Pipedrive', 'Close', 'Outreach', 'SalesLoft', 'Gong',
-      'Apollo', 'ZoomInfo', 'Clearbit', 'FullStory', 'Heap',
-      'Adobe Analytics', 'Marketo', 'Pardot', 'Mailchimp',
-      'Klaviyo', 'Brevo', 'ActiveCampaign', 'Customer.io'
-    ];
-
     const pageText = document.body.innerText;
     const found = [];
 
-    for (const connector of knownConnectors) {
-      // Check if the connector name appears in the page text
-      // Use word boundary-ish matching to avoid false positives
+    for (const connector of KNOWN_CONNECTOR_NAMES) {
       const regex = new RegExp(`\\b${connector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
       if (regex.test(pageText)) {
         found.push({
