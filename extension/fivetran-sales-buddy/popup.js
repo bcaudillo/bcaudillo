@@ -2347,7 +2347,9 @@ function scanDashboard() {
         return;
       }
 
-      chrome.tabs.sendMessage(tab.id, { action: 'scan' }, (response) => {
+      scanBtn.textContent = '🔄 Scanning all connectors…';
+
+      chrome.tabs.sendMessage(tab.id, { action: 'scanFull' }, (response) => {
         if (chrome.runtime.lastError || !response) {
           r.innerHTML = `<div style="text-align:center;padding:20px;color:var(--ft-text-light);">
             <div style="font-size:28px;margin-bottom:8px;">⚠️</div>

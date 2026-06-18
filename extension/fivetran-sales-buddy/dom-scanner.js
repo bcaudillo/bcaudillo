@@ -44,15 +44,12 @@
   // Scans all source-type spans on the page (span.ndnOq), deduplicates by
   // connector name, and returns one entry per unique connector type. This
   // means 5 Google Sheets connections → 1 "Google Sheets" card.
-  function scanConnectionsList() {
-    const connections = [];
-    const typeCounts = new Map();
+  //
+  // For large accounts (830+ connectors), the Fivetran dashboard uses
+  // virtualized scrolling — only visible rows are in the DOM. We auto-scroll
+  // the page to force all rows to render, collecting connector types as we go.
 
-    // Primary: grab every source-type span Fivetran renders.
-    // Both connection names and source types share span.ndnOq. Key difference:
-    // connection names are inside <a> tags (clickable links to detail pages),
-    // while source types are plain spans not wrapped in a link.
-    // Also filter out column headers that share the same CSS class.
+  function collectVisibleSourceTypes(typeCounts) {
     const HEADER_LABELS = new Set([
       'Connection name', 'Source type', 'Destination', 'Status',
       'Last synced', 'Sync frequency', 'Schema', 'Setup state',
@@ -62,12 +59,13 @@
     for (const span of sourceTypeSpans) {
       const t = (span.textContent || '').trim();
       if (!t || HEADER_LABELS.has(t)) continue;
-      // Skip if this span is inside an <a> tag — that's a connection name, not source type.
       if (span.closest('a')) continue;
       typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
     }
+  }
 
-    // Build one entry per unique source type.
+  function buildConnectionsResult(typeCounts) {
+    const connections = [];
     for (const [sourceType, count] of typeCounts) {
       connections.push({
         connectionName: '',
@@ -77,19 +75,95 @@
         instanceCount: count
       });
     }
-
-    // Fallback: if span.ndnOq class changed or doesn't exist, scan page
-    // text for known connector names.
     if (connections.length === 0) {
       return scanByTextMatching();
     }
-
     return {
       page: 'connections-list',
       count: connections.length,
       totalConnections: Array.from(typeCounts.values()).reduce((a, b) => a + b, 0),
       connections
     };
+  }
+
+  function scanConnectionsList() {
+    const typeCounts = new Map();
+    collectVisibleSourceTypes(typeCounts);
+    return buildConnectionsResult(typeCounts);
+  }
+
+  // Async version: scrolls the page to capture all virtualized rows.
+  // Returns a promise that resolves with the full connections result.
+  async function scanConnectionsListFull() {
+    const typeCounts = new Map();
+
+    // Find the scrollable container — usually the main content area
+    const scrollEl = document.querySelector('[class*="ScrollContainer"]')
+      || document.querySelector('[class*="scrollable"]')
+      || document.querySelector('main')
+      || document.documentElement;
+
+    // Collect what's visible now
+    collectVisibleSourceTypes(typeCounts);
+    const initialCount = typeCounts.size;
+
+    // Scroll to bottom in steps to force virtualized rows to render
+    const scrollTarget = scrollEl === document.documentElement ? window : scrollEl;
+    const getScrollHeight = () => scrollEl.scrollHeight;
+    const getScrollTop = () => scrollEl === document.documentElement ? window.scrollY : scrollEl.scrollTop;
+    const setScroll = (y) => {
+      if (scrollEl === document.documentElement) {
+        window.scrollTo(0, y);
+      } else {
+        scrollEl.scrollTop = y;
+      }
+    };
+
+    let lastScrollHeight = 0;
+    let stableCount = 0;
+    const MAX_ITERATIONS = 200; // Safety limit for very large lists
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const currentHeight = getScrollHeight();
+      const currentTop = getScrollTop();
+      const viewportHeight = scrollEl === document.documentElement
+        ? window.innerHeight
+        : scrollEl.clientHeight;
+
+      // We've reached the bottom
+      if (currentTop + viewportHeight >= currentHeight - 50) {
+        // Collect any remaining items
+        collectVisibleSourceTypes(typeCounts);
+
+        // Check if scroll height is stable (no more lazy-loaded content)
+        if (currentHeight === lastScrollHeight) {
+          stableCount++;
+          if (stableCount >= 3) break; // Truly at the bottom
+        } else {
+          stableCount = 0;
+        }
+        lastScrollHeight = currentHeight;
+      }
+
+      // Scroll down by ~80% of viewport height
+      setScroll(getScrollTop() + Math.floor(viewportHeight * 0.8));
+
+      // Wait for DOM to update
+      await new Promise(r => setTimeout(r, 150));
+
+      // Collect newly rendered items
+      collectVisibleSourceTypes(typeCounts);
+    }
+
+    // Scroll back to top
+    setScroll(0);
+
+    const result = buildConnectionsResult(typeCounts);
+    result.method = typeCounts.size > initialCount ? 'scroll-scan' : 'single-pass';
+    result.note = typeCounts.size > initialCount
+      ? `Scrolled to capture all connectors (${initialCount} visible initially, ${typeCounts.size} total found)`
+      : undefined;
+    return result;
   }
 
   // ─── CONNECTOR DETAIL SCANNER ──────────────────────────────
@@ -368,6 +442,8 @@
 
   // ─── MESSAGE HANDLER ──────────────────────────────────────
   // Listen for scan requests from the popup
+  // action: 'scan' — quick scan (what's currently in the DOM)
+  // action: 'scanFull' — scrolls the entire page to capture all virtualized rows
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'scan') {
       try {
@@ -380,11 +456,37 @@
           url: window.location.href
         });
       }
+    } else if (request.action === 'scanFull') {
+      const page = detectPage();
+      if (page.type === 'connections-list') {
+        scanConnectionsListFull().then(result => {
+          result.timestamp = new Date().toISOString();
+          result.url = window.location.href;
+          sendResponse(result);
+        }).catch(error => {
+          sendResponse({
+            page: 'error',
+            message: `Full scan failed: ${error.message}`,
+            url: window.location.href
+          });
+        });
+      } else {
+        try {
+          const result = scan();
+          sendResponse(result);
+        } catch (error) {
+          sendResponse({
+            page: 'error',
+            message: `Scan failed: ${error.message}`,
+            url: window.location.href
+          });
+        }
+      }
     }
     return true; // Keep message channel open for async response
   });
 
   // Also expose scan function globally for debugging
-  window.__fivetranScanner = { scan, detectPage };
+  window.__fivetranScanner = { scan, scanConnectionsListFull, detectPage };
 
 })();
