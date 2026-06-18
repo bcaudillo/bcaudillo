@@ -3630,7 +3630,7 @@ function setStatus(state, text, count) {
       loadKnownIssuesTab();
     }
   } catch (err) {
-    console.warn('Supabase load failed — using hardcoded fallback:', err);
-    setStatus('error', 'Supabase error — using built-in data', Object.keys(connectorData).length + ' connectors');
+    console.log('Supabase unavailable — using built-in data (' + Object.keys(connectorData).length + ' connectors)');
+    setStatus('fallback', 'Using built-in data', Object.keys(connectorData).length + ' connectors');
   }
 })();
