@@ -1,0 +1,76 @@
+version: 2
+
+sources:
+  - name: salesforce
+    description: Salesforce data landed by Fivetran from the demo Google Drive source.
+    schema: "{{ var('salesforce_schema') }}"
+    tables:
+      - name: opportunity
+        loaded_at_field: _fivetran_synced
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 30, period: hour}
+        columns:
+          - name: id
+            data_tests: [not_null, unique]
+          - name: amount
+            data_tests: [not_null]
+          - name: stage_name
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['Closed Won', 'Closed Lost', 'Negotiation', 'Proposal', 'Prospecting']
+          - name: close_date
+            data_tests: [not_null]
+
+  - name: stripe
+    description: Stripe-shaped charge data landed by Fivetran from the demo Google Drive source.
+    schema: "{{ var('stripe_schema') }}"
+    tables:
+      - name: charge
+        loaded_at_field: _fivetran_synced
+        freshness:
+          warn_after: {count: 4, period: hour}
+          error_after: {count: 6, period: hour}
+        columns:
+          - name: id
+            data_tests: [not_null, unique]
+          - name: amount
+            description: Charge amount in integer cents.
+            data_tests: [not_null]
+          - name: status
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['succeeded', 'failed', 'pending']
+          - name: created
+            data_tests: [not_null]
+
+  - name: finance
+    description: Finance-owned reconciled revenue output.
+    schema: "{{ var('finance_schema') }}"
+    tables:
+      - name: fct_revenue_reconciled
+        loaded_at_field: _fivetran_synced
+        freshness:
+          warn_after: {count: 18, period: hour}
+          error_after: {count: 24, period: hour}
+        columns:
+          - name: quarter
+            data_tests: [not_null, unique]
+          - name: net_revenue
+            data_tests: [not_null]
+
+  - name: metadata
+    description: Fivetran connector sync outcomes used as operational evidence.
+    schema: "{{ var('metadata_schema') }}"
+    tables:
+      - name: sync_log
+        columns:
+          - name: connection_name
+            data_tests: [not_null]
+          - name: sync_end_time
+            data_tests: [not_null]
+          - name: status
+            data_tests: [not_null]
+

@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: stg_salesforce_opportunity
+    description: Typed Salesforce opportunities with an explicit closed-won flag and quarter grain.
+    columns:
+      - name: opportunity_id
+        data_tests: [not_null, unique]
+      - name: amount_dollars
+        data_tests: [not_null]
+      - name: fiscal_quarter
+        data_tests: [not_null]
+
+  - name: stg_stripe_charge
+    description: Typed Stripe charges with cents normalized to dollars.
+    columns:
+      - name: charge_id
+        data_tests: [not_null, unique]
+      - name: amount_dollars
+        data_tests: [not_null]
+      - name: activity_quarter
+        data_tests: [not_null]
+
+  - name: stg_reconciled_revenue
+    description: Finance-reconciled revenue at fiscal-quarter grain.
+    columns:
+      - name: fiscal_quarter
+        data_tests: [not_null, unique]
+      - name: net_revenue_dollars
+        data_tests: [not_null]
+
+  - name: revenue_by_source
+    description: Layer 1. Comparable quarterly values with source labels but no business context.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [fiscal_quarter, source]
+    columns:
+      - name: source
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['salesforce', 'warehouse', 'stripe']
+      - name: metric_value
+        data_tests: [not_null]
+
+  - name: revenue_definitions
+    description: Layer 2. Governed business meaning, ownership, and intended use for each metric.
+    columns:
+      - name: source
+        data_tests: [not_null, unique]
+      - name: metric_name
+        data_tests: [not_null]
+      - name: owner
+        data_tests: [not_null]
+      - name: authoritative_for
+        data_tests: [not_null]
+
+  - name: source_freshness
+    description: Layer 3. Operational recency evidence and history boundaries by source.
+    columns:
+      - name: source
+        data_tests: [not_null, unique]
+      - name: freshness_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['pass', 'stale', 'unknown']
+      - name: earliest_record_at
+        data_tests: [not_null]
+
+  - name: historical_revenue_gaps
+    description: Observed booking-to-cash and reconciliation-to-cash gaps; not a hard-coded narrative.
+    columns:
+      - name: fiscal_quarter
+        data_tests: [not_null, unique]
+
+  - name: agent_context_layers
+    description: Transparent presentation rubric. Scores are deterministic evidence-coverage scores, not model probabilities.
+    columns:
+      - name: layer_number
+        data_tests: [not_null, unique]
+      - name: confidence_score
+        data_tests: [not_null]
+
+  - name: forecast_context
+    description: Layer 4. One governed payload combining values, semantics, freshness, authority, lineage references, validation, and historical evidence.
+    columns:
+      - name: source
+        data_tests: [not_null, unique]
+      - name: metric_owner
+        data_tests: [not_null]
+      - name: recommended_use
+        data_tests: [not_null]
+      - name: lineage_reference
+        data_tests: [not_null]
+      - name: validation_reference
+        data_tests: [not_null]
+
